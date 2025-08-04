@@ -1,5 +1,5 @@
-import { getInputBottomPadding } from '@/utils/androidSafeArea';
-import { checkSpeechRecognitionPermission, convertSpeechToText } from '@/utils/speechToText';
+import { checkAudioQuality, getAudioQualitySuggestions, isSuitableForSpeechRecognition } from '@/utils/audioQualityChecker';
+import { checkSpeechRecognitionPermission, convertSpeechToText, getSpeechRecognitionStatus } from '@/utils/speechToText';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -16,6 +16,11 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
   const [isProcessing, setIsProcessing] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [speechStatus, setSpeechStatus] = useState<{
+    baiduAvailable: boolean;
+    fallbackAvailable: boolean;
+    primaryService: string;
+  } | null>(null);
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
 
   useEffect(() => {
@@ -24,6 +29,17 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
       const hasPermission = await checkSpeechRecognitionPermission();
       if (!hasPermission) {
         Alert.alert('需要录音权限', '请在设置中允许应用使用麦克风');
+      }
+    })();
+
+    // 检查语音识别服务状态
+    (async () => {
+      try {
+        const status = await getSpeechRecognitionStatus();
+        setSpeechStatus(status);
+        console.log('🎤 语音识别服务状态:', status);
+      } catch (error) {
+        console.error('获取语音识别服务状态失败:', error);
       }
     })();
   }, []);
@@ -59,9 +75,31 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
         playsInSilentModeIOS: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      // 使用更适合语音识别的录音设置
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.wav',
+          outputFormat: 1, // PCM_16BIT
+          audioEncoder: 1, // PCM_16BIT
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 256000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: 1, // LINEARPCM
+          audioQuality: 1, // HIGH
+          sampleRate: 16000,
+          numberOfChannels: 1,
+          bitRate: 256000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/wav',
+        },
+      });
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
@@ -83,8 +121,19 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
       setRecording(null);
 
       if (uri) {
-        // 调用语音转文本功能
+        // 检查音频质量
         try {
+          const audioQuality = await checkAudioQuality(uri);
+          console.log('🎵 音频质量检查:', audioQuality);
+          
+          if (!isSuitableForSpeechRecognition(audioQuality)) {
+            const suggestions = getAudioQualitySuggestions(audioQuality);
+            console.log('⚠️ 音频质量建议:', suggestions);
+            setError(suggestions[0] || '音频质量不适合识别');
+            return;
+          }
+          
+          // 调用语音转文本功能
           const recognizedText = await convertSpeechToText(uri);
           if (recognizedText) {
             onVoiceResult(recognizedText);
@@ -134,6 +183,18 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
     return 'mic';
   };
 
+  const getStatusText = () => {
+    if (!speechStatus) return '';
+    
+    if (speechStatus.baiduAvailable) {
+      return '使用百度语音API';
+    } else if (speechStatus.fallbackAvailable) {
+      return '使用模拟识别';
+    } else {
+      return '语音识别不可用';
+    }
+  };
+
   return (
     <Pressable
       style={[styles.container, disabled && styles.disabled]}
@@ -155,6 +216,9 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
         />
       </Animated.View>
       <ThemedText style={styles.buttonText}>{getButtonText()}</ThemedText>
+      {speechStatus && (
+        <ThemedText style={styles.statusText}>{getStatusText()}</ThemedText>
+      )}
       {error && (
         <ThemedText style={styles.errorText}>{error}</ThemedText>
       )}
@@ -168,6 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
     paddingBottom: Platform.OS === 'android' ? 0 : 20,
+    zIndex: 1,
   },
   button: {
     width: 80,
@@ -184,6 +249,12 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 4,
   },
   errorText: {
     fontSize: 14,

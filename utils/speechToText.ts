@@ -1,12 +1,56 @@
 import { Audio } from 'expo-av';
+import { checkBaiduSpeechAvailability, recognizeSpeechWithBaidu } from './baiduSpeechApi';
 
-// 模拟语音转文本功能
-// 在实际应用中，这里应该调用真实的语音识别API
+// 语音识别结果
+export interface SpeechRecognitionResult {
+  text: string;
+  confidence: number;
+  isFinal: boolean;
+}
+
+// 语音识别状态
+export interface SpeechRecognitionState {
+  isListening: boolean;
+  isProcessing: boolean;
+  error: string | null;
+}
+
+/**
+ * 使用百度语音API进行语音转文本
+ */
 export async function convertSpeechToText(audioUri: string): Promise<string> {
   try {
-    // 这里应该调用真实的语音识别API
-    // 例如：Google Speech-to-Text, Azure Speech Services, 或百度语音识别等
+    console.log('🎤 开始语音转文本处理...');
     
+    // 首先尝试使用百度语音API
+    const isBaiduAvailable = await checkBaiduSpeechAvailability();
+    
+    if (isBaiduAvailable) {
+      console.log('✅ 使用百度语音API进行识别');
+      return await recognizeSpeechWithBaidu(audioUri);
+    } else {
+      console.log('⚠️ 百度语音API不可用，使用模拟识别');
+      return await convertSpeechToTextMock(audioUri);
+    }
+  } catch (error) {
+    console.error('❌ 语音转文本失败:', error);
+    
+    // 如果百度API失败，回退到模拟识别
+    try {
+      console.log('🔄 回退到模拟识别');
+      return await convertSpeechToTextMock(audioUri);
+    } catch (fallbackError) {
+      console.error('❌ 模拟识别也失败:', fallbackError);
+      throw new Error('语音识别失败，请重试');
+    }
+  }
+}
+
+/**
+ * 模拟语音转文本功能（备用方案）
+ */
+async function convertSpeechToTextMock(audioUri: string): Promise<string> {
+  try {
     // 模拟处理延迟
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -36,7 +80,7 @@ export async function convertSpeechToText(audioUri: string): Promise<string> {
     return mockResults[index];
     
   } catch (error) {
-    console.error('语音转文本失败:', error);
+    console.error('模拟语音转文本失败:', error);
     throw new Error('语音识别失败，请重试');
   }
 }
@@ -52,7 +96,9 @@ function simpleHash(str: string): number {
   return Math.abs(hash);
 }
 
-// 检查语音识别权限
+/**
+ * 检查语音识别权限
+ */
 export async function checkSpeechRecognitionPermission(): Promise<boolean> {
   try {
     const { status } = await Audio.requestPermissionsAsync();
@@ -63,17 +109,16 @@ export async function checkSpeechRecognitionPermission(): Promise<boolean> {
   }
 }
 
-// 语音识别状态
-export interface SpeechRecognitionState {
-  isListening: boolean;
-  isProcessing: boolean;
-  error: string | null;
-}
-
-// 语音识别结果
-export interface SpeechRecognitionResult {
-  text: string;
-  confidence: number;
-  isFinal: boolean;
+/**
+ * 获取语音识别服务状态
+ */
+export async function getSpeechRecognitionStatus() {
+  const baiduStatus = await checkBaiduSpeechAvailability();
+  
+  return {
+    baiduAvailable: baiduStatus,
+    fallbackAvailable: true, // 模拟识别总是可用
+    primaryService: baiduStatus ? 'baidu' : 'mock',
+  };
 }
  

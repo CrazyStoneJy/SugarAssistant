@@ -13,6 +13,8 @@
 
 ### 🎤 语音功能
 - 语音输入：支持语音录制和语音转文字
+- 百度语音API：集成百度语音识别服务
+- 自动回退：API不可用时自动使用模拟识别
 - 语音转文本：实时将语音转换为文字
 - 语音播放：AI回复支持语音播放功能
 - 录音动画：录音时显示脉冲动画效果
@@ -87,9 +89,15 @@ SugarAssistant/
 1. 在项目根目录创建`.env`文件
 2. 添加以下内容：
    ```
+   # DeepSeek API配置
    DEEPSEEK_API_KEY=your_api_key_here
    DEEPSEEK_MODEL=deepseek-chat
    DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+   
+   # 百度语音API配置
+   BAIDU_APP_ID=your_baidu_app_id_here
+   BAIDU_API_KEY=your_baidu_api_key_here
+   BAIDU_SECRET_KEY=your_baidu_secret_key_here
    ```
 3. 重启开发服务器：`npm start -- --clear`
 4. 系统会自动读取环境变量
@@ -98,11 +106,13 @@ SugarAssistant/
 - 确保.env文件在项目根目录
 - 重启开发服务器后环境变量才会生效
 - 如果未配置环境变量，系统会自动使用模拟AI
+- 百度语音API需要从[百度AI开放平台](https://ai.baidu.com/tech/speech)获取密钥
 
 ### 文字聊天
 1. 在输入框中输入消息
 2. 点击发送按钮或按回车键发送
-3. AI会根据消息内容智能回复（真实API或模拟AI）
+3. AI会根据消息内容智能回复（DeepSeek API或模拟AI）
+4. 支持对话上下文，保持连贯性
 
 ### 语音聊天
 1. 点击语音按钮切换到语音模式
@@ -134,12 +144,40 @@ SugarAssistant/
 - **麦克风权限**：用于语音录制功能
 - **音频播放权限**：用于语音播放功能
 
+## 百度语音API集成
+
+### 功能特性
+- ✅ 实时语音录制和识别
+- ✅ 百度语音API集成
+- ✅ 自动回退到模拟识别
+- ✅ 语音识别状态显示
+- ✅ 错误处理和重试机制
+
+### 配置步骤
+1. 访问[百度AI开放平台](https://ai.baidu.com/)
+2. 注册并创建应用，选择"语音技术"
+3. 获取App ID、API Key和Secret Key
+4. 在`.env`文件中配置密钥
+5. 重启应用即可使用
+
+### 使用说明
+- 点击语音按钮切换到语音模式
+- 长按"按住说话"开始录音
+- 松开按钮停止录音并识别
+- 识别结果自动发送为文字消息
+
+### 技术实现
+- `utils/baiduSpeechApi.ts`: 百度语音API实现
+- `utils/speechToText.ts`: 语音转文字主逻辑
+- `components/VoiceInput.tsx`: 语音输入组件
+- 支持Token缓存和错误重试
+
 ## 开发计划
 
-- [ ] 集成真实的AI API（如OpenAI）
-- [ ] 添加语音转文字功能
+- [x] 集成真实的AI API（DeepSeek）- 已完成
+- [x] 添加语音转文字功能（百度语音API）- 已完成
 - [ ] 支持图片和文件发送
-- [ ] 添加聊天历史保存
+- [x] 添加聊天历史保存 - 已完成
 - [ ] 支持多语言切换
 
 ## 贡献

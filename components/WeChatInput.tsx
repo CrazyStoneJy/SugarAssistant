@@ -156,6 +156,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     paddingBottom: Platform.OS === 'ios' ? 20 : getInputContainerBottomPadding(),
+    zIndex: 1,
   },
   inputArea: {
     flexDirection: 'row',

@@ -1,12 +1,13 @@
 import ChatMessage from '@/components/ChatMessage';
+
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
-import { generateAIResponse, getTypingDelay } from '@/utils/aiResponse';
+import { generateAIResponse } from '@/utils/aiResponse';
 import { getKeyboardVerticalOffset, getSafeAreaBottomHeight, getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
-import { checkEnvironmentConfig } from '@/utils/configChecker';
-import { autoInitAPI, DeepSeekMessage, isAPIInitialized, sendMessageToDeepSeek } from '@/utils/deepseekApi';
+
+import { autoInitAPI, isAPIInitialized, sendMessageToDeepSeek } from '@/utils/deepseekApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -36,6 +37,7 @@ export default function ChatScreen() {
   const [isAPIAvailable, setIsAPIAvailable] = useState(true);
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
   const flatListRef = useRef<FlatList>(null);
 
   // 使用 useFocusEffect 监听页面焦点变化
@@ -89,9 +91,6 @@ export default function ChatScreen() {
 
   const checkAPIStatus = async () => {
     try {
-      // 检查环境变量配置
-      const config = checkEnvironmentConfig();
-      
       // 首先尝试从环境变量自动初始化
       if (autoInitAPI()) {
         setIsAPIAvailable(true);
@@ -100,10 +99,18 @@ export default function ChatScreen() {
         return;
       }
 
-      // 如果环境变量未配置，使用模拟AI
+      // 如果环境变量不可用，检查手动配置
+      if (isAPIInitialized()) {
+        setIsAPIAvailable(true);
+        setApiSource('manual');
+        console.log('✅ 使用手动配置的DeepSeek API');
+        return;
+      }
+
+      // 如果都没有配置，使用模拟AI
       setIsAPIAvailable(false);
       setApiSource('none');
-      console.log('ℹ️ 未配置API，使用模拟AI');
+      console.log('⚠️ 未配置API，使用模拟AI');
     } catch (error) {
       console.error('检查API状态失败:', error);
       setIsAPIAvailable(false);
@@ -112,7 +119,7 @@ export default function ChatScreen() {
   };
 
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -121,73 +128,81 @@ export default function ChatScreen() {
       timestamp: new Date(),
     };
 
-    // 更新本地状态
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsLoading(true);
+    
+    // 添加用户消息后滚动到底部
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
 
-    // 保存用户消息到存储
     try {
+      // 保存用户消息到存储
       await addMessageToCurrentSession(userMessage);
-    } catch (error) {
-      console.error('保存用户消息失败:', error);
-    }
 
-    try {
-      let aiResponse: string;
-
+      // 生成AI回复
+      let aiResponseText: string;
+      
       if (isAPIAvailable && isAPIInitialized()) {
         // 使用DeepSeek API
-        const conversationHistory: DeepSeekMessage[] = messages
-          .filter(msg => !msg.isUser) // 只包含AI的回复
-          .map(msg => ({
-            role: 'assistant',
-            content: msg.text,
-          }));
-
-        aiResponse = await sendMessageToDeepSeek(text.trim(), conversationHistory);
+        try {
+          console.log('🤖 使用DeepSeek API生成回复...');
+          
+          // 构建对话历史
+          const conversationHistory = messages
+            .slice(-10) // 只保留最近10条消息，避免token过多
+            .map(msg => ({
+              role: msg.isUser ? 'user' as const : 'assistant' as const,
+              content: msg.text,
+            }));
+          
+          console.log('📝 对话历史长度:', conversationHistory.length);
+          aiResponseText = await sendMessageToDeepSeek(text.trim(), conversationHistory);
+          console.log('✅ DeepSeek API回复成功:', aiResponseText.substring(0, 50) + '...');
+        } catch (error) {
+          console.error('DeepSeek API调用失败:', error);
+          console.log('🔄 回退到模拟AI回复...');
+          // 如果API调用失败，使用模拟回复
+          const mockResponse = await generateAIResponse(text.trim());
+          aiResponseText = mockResponse.text;
+        }
       } else {
         // 使用模拟AI回复
-        const mockResponse = generateAIResponse(text.trim());
-        const typingDelay = getTypingDelay(mockResponse.text.length);
-        await new Promise(resolve => setTimeout(resolve, typingDelay));
-        aiResponse = mockResponse.text;
+        console.log('🎭 使用模拟AI生成回复...');
+        const mockResponse = await generateAIResponse(text.trim());
+        aiResponseText = mockResponse.text;
       }
-
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: aiResponse,
+        text: aiResponseText,
         isUser: false,
         timestamp: new Date(),
       };
-      
-      // 更新本地状态
+
       setMessages(prev => [...prev, aiMessage]);
       
-      // 保存AI消息到存储
-      try {
-        await addMessageToCurrentSession(aiMessage);
-      } catch (error) {
-        console.error('保存AI消息失败:', error);
-      }
+      // 保存AI回复到存储
+      await addMessageToCurrentSession(aiMessage);
+      
+      // 添加新消息后滚动到底部
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error) {
       console.error('发送消息失败:', error);
-      // 如果API调用失败，使用模拟回复
-      const mockResponse = generateAIResponse(text.trim());
-      const aiMessage: Message = {
+      
+      // 如果发送失败，添加错误消息
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: mockResponse.text,
+        text: '抱歉，发送消息时出现错误，请重试。',
         isUser: false,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, aiMessage]);
       
-      // 保存模拟AI消息到存储
-      try {
-        await addMessageToCurrentSession(aiMessage);
-      } catch (error) {
-        console.error('保存模拟AI消息失败:', error);
-      }
+      setMessages(prev => [...prev, errorMessage]);
+      await addMessageToCurrentSession(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -195,6 +210,16 @@ export default function ChatScreen() {
 
   const handleVoiceResult = (text: string) => {
     sendMessage(text);
+  };
+
+
+
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const scrollToBottom = () => {
+    flatListRef.current?.scrollToEnd({ animated: true });
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -208,13 +233,15 @@ export default function ChatScreen() {
   const getStatusText = () => {
     if (apiSource === 'env') {
       return '🟢 DeepSeek API (环境变量)';
+    } else if (apiSource === 'manual') {
+      return '🟡 DeepSeek API (手动配置)';
     } else {
       return '🔴 使用模拟AI';
     }
   };
 
   const getLoadingText = () => {
-    if (apiSource === 'env') {
+    if (apiSource === 'env' || apiSource === 'manual') {
       return 'AI正在思考中...';
     } else {
       return '模拟AI回复中...';
@@ -252,16 +279,22 @@ export default function ChatScreen() {
           <ThemedText style={styles.statusText}>
             {getStatusText()}
           </ThemedText>
-          <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
-            <Ionicons name="list-outline" size={20} color="#007AFF" />
-          </TouchableOpacity>
+          <View style={styles.statusButtons}>
+            <TouchableOpacity 
+              onPress={scrollToTop} 
+              style={styles.scrollButton}
+            >
+              <Ionicons name="arrow-up-outline" size={20} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
+              <Ionicons name="list-outline" size={20} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.keyboardAvoidingView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={getKeyboardVerticalOffset()}
-        >
+
+
+        <View style={styles.chatContainer}>
           <FlatList
             ref={flatListRef}
             data={messages}
@@ -269,9 +302,23 @@ export default function ChatScreen() {
             keyExtractor={item => item.id}
             style={styles.messagesList}
             contentContainerStyle={styles.messagesContentContainer}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-            onLayout={() => flatListRef.current?.scrollToEnd()}
-            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => {
+              // 只在有新消息添加时才自动滚动到底部
+              // 这里不自动滚动，让用户手动控制
+            }}
+            onLayout={() => {
+              // 只在有新消息添加时才自动滚动到底部
+              // 这里不自动滚动，让用户手动控制
+            }}
+            showsVerticalScrollIndicator={true}
+            scrollEnabled={true}
+            bounces={true}
+            alwaysBounceVertical={false}
+            removeClippedSubviews={false}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="on-drag"
+            inverted={false}
+            nestedScrollEnabled={false}
           />
           
           {isLoading && (
@@ -282,7 +329,14 @@ export default function ChatScreen() {
               </ThemedText>
             </View>
           )}
+        </View>
 
+        <KeyboardAvoidingView
+          style={styles.inputContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? getKeyboardVerticalOffset() : 0}
+          enabled={Platform.OS === 'ios'}
+        >
           <WeChatInput
             value={inputText}
             onChangeText={setInputText}
@@ -320,18 +374,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  statusButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scrollButton: {
+    padding: 8,
+  },
+
   sessionsButton: {
     padding: 8,
   },
-  keyboardAvoidingView: {
+  chatContainer: {
     flex: 1,
+  },
+  inputContainer: {
+    backgroundColor: 'transparent',
   },
   messagesList: {
     flex: 1,
-    // backgroundColor: 'blue',
+    backgroundColor: 'transparent',
   },
   messagesContentContainer: {
-    paddingBottom: Platform.OS === 'android' ? 0 : getSafeAreaBottomHeight(),
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'android' ? 20 : getSafeAreaBottomHeight(),
+    paddingTop: 10,
   },
   loadingContainer: {
     flexDirection: 'row',

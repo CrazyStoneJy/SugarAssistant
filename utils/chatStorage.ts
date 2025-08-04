@@ -104,7 +104,7 @@ export function createNewChatSession(): ChatSession {
     messages: [
       {
         id: '1',
-        text: '你好！我是你的AI助手，有什么可以帮助你的吗？',
+        text: "我是一位专业的营养师，专精于血糖控制、低升糖饮食、代谢综合征管理。",
         isUser: false,
         timestamp: now,
       },
