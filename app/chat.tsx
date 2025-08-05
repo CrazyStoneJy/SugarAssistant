@@ -7,7 +7,7 @@ import { generateAIResponse } from '@/utils/aiResponse';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
 
-import { autoInitAPI, isAPIInitialized } from '@/utils/deepseekApi';
+import { autoInitAPI, isAPIInitialized, sendMessageToDeepSeekStream } from '@/utils/deepseekApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -162,9 +162,9 @@ export default function ChatScreen() {
     setInputText('');
     setIsLoading(true);
     
-    // 添加用户消息后滚动到底部
+    // 添加用户消息后滚动到顶部（因为inverted为true）
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }, 100);
 
     try {
@@ -174,32 +174,130 @@ export default function ChatScreen() {
       // 生成AI回复
       let aiResponseText: string;
       
-      // FIXME: 流式回复
-      // isAPIAvailable && isAPIInitialized()
-      if (false) {
+      if (isAPIAvailable && isAPIInitialized()) {
+        // 使用DeepSeek API
+        console.log('🤖 使用DeepSeek API生成回复...');
+        
+        // 构建对话历史 - 只使用最后10条消息
+        const conversationHistory = messages
+          .slice(-10) // 只取最后10条消息
+          .map(msg => ({
+            role: msg.isUser ? 'user' as const : 'assistant' as const,
+            content: msg.text,
+          }));
+        
+        // 立即添加AI思考消息
+        const thinkingMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: '',
+          isUser: false,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, thinkingMessage]);
+        
+        // 添加思考消息后滚动到顶部（因为inverted为true）
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }, 100);
+        
+        try {
+          // 使用流式API
+          let fullResponse = '';
+          
+          await sendMessageToDeepSeekStream(
+            text.trim(),
+            conversationHistory,
+            (chunk: string) => {
+              // 收到每个文本块时更新消息
+              fullResponse += chunk;
+              
+              // 更新状态
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: fullResponse }
+                  : msg
+              ));
+              
+              // 滚动到顶部（因为inverted为true）
+              setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+              }, 50);
+            },
+            (completeResponse: string) => {
+              // 流式传输完成
+              console.log('✅ 流式回复完成');
+              aiResponseText = completeResponse;
+              
+              // 最终更新消息
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: completeResponse }
+                  : msg
+              ));
+              
+              // 最终滚动到顶部
+              setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+              }, 50);
+              
+              // 保存完整的AI回复到存储
+              const aiMessage: Message = {
+                id: thinkingMessage.id,
+                text: completeResponse,
+                isUser: false,
+                timestamp: thinkingMessage.timestamp,
+              };
+              addMessageToCurrentSession(aiMessage);
+            },
+            (error: Error) => {
+              console.error('DeepSeek API流式调用失败:', error);
+              
+              // 更新思考消息为错误信息
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: '抱歉，AI服务暂时不可用，请稍后重试。' }
+                  : msg
+              ));
+              
+              const errorMessage: Message = {
+                id: thinkingMessage.id,
+                text: '抱歉，AI服务暂时不可用，请稍后重试。',
+                isUser: false,
+                timestamp: thinkingMessage.timestamp,
+              };
+              addMessageToCurrentSession(errorMessage);
+            }
+          );
+          
+          return; // 流式API会异步处理，直接返回
+        } catch (error) {
+          console.error('DeepSeek API调用失败:', error);
+          aiResponseText = '抱歉，AI服务暂时不可用，请稍后重试。';
+        }
       } else {
         // 使用模拟AI回复
         console.log('🎭 使用模拟AI生成回复...');
         const mockResponse = await generateAIResponse(text.trim());
         aiResponseText = mockResponse.text;
-      }
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: aiResponseText,
-        isUser: false,
-        timestamp: new Date(),
-      };
+        
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: aiResponseText,
+          isUser: false,
+          timestamp: new Date(),
+        };
 
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // 保存AI回复到存储
-      await addMessageToCurrentSession(aiMessage);
-      
-      // 添加新消息后滚动到底部
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+        setMessages(prev => [...prev, aiMessage]);
+        
+        // 保存AI回复到存储
+        await addMessageToCurrentSession(aiMessage);
+        
+        // 添加新消息后滚动到顶部（因为inverted为true）
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }, 100);
+      }
     } catch (error) {
       console.error('发送消息失败:', error);
       
@@ -222,13 +320,8 @@ export default function ChatScreen() {
     sendMessage(text);
   };
 
-
-
   const scrollToTop = () => {
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
-
-  const scrollToBottom = () => {
+    // 当inverted为true时，滚动到顶部实际上是滚动到列表末尾
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
@@ -237,6 +330,7 @@ export default function ChatScreen() {
       text={item.text}
       isUser={item.isUser}
       timestamp={item.timestamp}
+      isThinking={isLoading && !item.isUser && item.text === ''}
     />
   );
 
@@ -244,13 +338,6 @@ export default function ChatScreen() {
     return "控糖小助手"
   };
 
-  const getLoadingText = () => {
-    if (apiSource === 'env' || apiSource === 'manual') {
-      return 'AI正在思考中...';
-    } else {
-      return '模拟AI回复中...';
-    }
-  };
 
   if (isLoadingHistory) {
     return (
@@ -279,8 +366,6 @@ export default function ChatScreen() {
       />
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ThemedView style={styles.container}>
           {/* 顶部状态栏 */}
@@ -289,15 +374,15 @@ export default function ChatScreen() {
               {getTitleName()}
             </ThemedText>
             <View style={styles.statusButtons}>
-              <TouchableOpacity 
-                onPress={scrollToTop} 
-                style={styles.scrollButton}
-              >
-                <Ionicons name="arrow-up-outline" size={20} color="#007AFF" />
+              <TouchableOpacity onPress={() => router.push('/foods')} style={styles.foodsButton}>
+                <Ionicons name="restaurant-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
                 <Ionicons name="list-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
+              {/* <TouchableOpacity onPress={() => router.push('/transition-demo')} style={styles.demoButton}>
+                <Ionicons name="play-outline" size={20} color="#007AFF" />
+              </TouchableOpacity> */}
             </View>
           </View>
 
@@ -305,38 +390,21 @@ export default function ChatScreen() {
           <View style={styles.chatContainer}>
             <FlatList
               ref={flatListRef}
-              data={messages}
+              data={messages.slice().reverse()}
               renderItem={renderMessage}
               keyExtractor={item => item.id}
               style={styles.messagesList}
               contentContainerStyle={styles.messagesContentContainer}
-              onContentSizeChange={() => {
-                // 只在有新消息添加时才自动滚动到底部
-                // 这里不自动滚动，让用户手动控制
-              }}
-              onLayout={() => {
-                // 只在有新消息添加时才自动滚动到底部
-                // 这里不自动滚动，让用户手动控制
-              }}
               showsVerticalScrollIndicator={true}
               scrollEnabled={true}
-              bounces={true}
+              // bounces={true}
               alwaysBounceVertical={false}
               removeClippedSubviews={false}
-              keyboardShouldPersistTaps="always"
+              // keyboardShouldPersistTaps="always"
               keyboardDismissMode="on-drag"
-              inverted={false}
+              inverted={true}
               nestedScrollEnabled={false}
             />
-            
-            {isLoading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#007AFF" />
-                <ThemedText style={styles.loadingText}>
-                  {getLoadingText()}
-                </ThemedText>
-              </View>
-            )}
           </View>
 
           {/* 输入框区域 - 固定在底部 */}
@@ -391,31 +459,35 @@ const styles = StyleSheet.create({
   scrollButton: {
     padding: 8,
   },
-
+  foodsButton: {
+    padding: 8,
+  },
   sessionsButton: {
+    padding: 8,
+  },
+  demoButton: {
     padding: 8,
   },
   chatContainer: {
     flex: 1,
     backgroundColor: 'transparent',
+    // marginBottom: 0, // 确保没有底部边距
   },
   inputContainer: {
     backgroundColor: 'transparent',
-    position: 'relative',
-    zIndex: 1000,
-    marginBottom: Platform.OS === 'android' ? -5 : 0, // 减少Android的负边距，从-10改为-5
+    // zIndex: 1000,
   },
   keyboardAvoidingContent: {
     flex: 1,
   },
   messagesList: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#eeeeee',
   },
   messagesContentContainer: {
     flexGrow: 1,
-    paddingTop: 10,
-    paddingBottom: 8, // 添加底部间距，确保最后一条消息和输入框之间有适当距离
+    // paddingTop: 20, // 当inverted为true时，这是底部间距
+    // paddingBottom: 60, // 为输入框留出空间
   },
   loadingContainer: {
     flexDirection: 'row',

@@ -1,15 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-    Animated,
-    Keyboard,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View
+  Animated,
+  Keyboard,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
-import VoiceInput from './VoiceInput';
 
 interface WeChatInputProps {
   value: string;
@@ -85,16 +84,16 @@ export default function WeChatInput({
             placeholder={placeholder}
             placeholderTextColor="#999"
             multiline
-            maxLength={500}
+            maxLength={1000}
+            numberOfLines={1}
+            onContentSizeChange={(event) => {
+              // 动态调整输入框高度
+              const { height } = event.nativeEvent.contentSize;
+              console.log('输入框内容高度:', height);
+            }}
             onFocus={() => {
               setIsFocused(true);
               console.log('输入框获得焦点');
-              // 确保输入框在键盘上方
-              setTimeout(() => {
-                inputRef.current?.measure((x, y, width, height, pageX, pageY) => {
-                  console.log('输入框位置:', { x, y, width, height, pageX, pageY });
-                });
-              }, 100);
             }}
             onBlur={() => setIsFocused(false)}
             editable={!showVoiceButton}
@@ -102,6 +101,7 @@ export default function WeChatInput({
             returnKeyType="default"
             blurOnSubmit={false}
             enablesReturnKeyAutomatically={true}
+            textAlignVertical="top"
           />
         </View>
 
@@ -131,7 +131,7 @@ export default function WeChatInput({
       </View>
 
       {/* 语音输入区域 */}
-      {showVoiceButton && (<Animated.View
+      {/* {showVoiceButton && (<Animated.View
         style={[
           styles.voiceContainer,
           {
@@ -156,7 +156,7 @@ export default function WeChatInput({
             <ThemedText style={styles.processingText}>正在识别语音...</ThemedText>
           </View>
         )}
-      </Animated.View>)}
+      </Animated.View>)} */}
     </View>
   );
 }
@@ -167,18 +167,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     paddingBottom: 0, // 由父组件控制底部间距
-    zIndex: 1000,
-    elevation: 10,
-    position: 'relative',
-    // 确保输入框固定在底部
-    alignSelf: 'flex-end',
+    // zIndex: 1000,
+    // elevation: 10,
     width: '100%',
   },
   inputArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 4, // 减少垂直间距，从8改为4
+    paddingVertical: 8,
     minHeight: 44,
   },
   textInputContainer: {
@@ -188,24 +185,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5EA',
     minHeight: 36,
-    maxHeight: 120,
+    maxHeight: 150,
     marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 1,
+    // },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 2,
+    // elevation: 2,
   },
   textInput: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6, // 减少内部垂直间距，从8改为6
+    paddingHorizontal: 15,
+    paddingVertical: 8,
     fontSize: 16,
-    lineHeight: 20,
-    textAlignVertical: 'center',
+    lineHeight: 22,
+    textAlignVertical: 'top',
+    minHeight: 36,
+    borderRadius: 18,
   },
   textInputFocused: {
     borderColor: '#007AFF',

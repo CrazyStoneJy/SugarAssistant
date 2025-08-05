@@ -1,0 +1,284 @@
+{
+  "foods": [
+    {
+      "id": "1",
+      "name": "菠菜",
+      "image": "🥬",
+      "sugarContent": 0.4,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "2",
+      "name": "西兰花",
+      "image": "🥦",
+      "sugarContent": 1.5,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "3",
+      "name": "黄瓜",
+      "image": "🥒",
+      "sugarContent": 1.7,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "4",
+      "name": "生菜",
+      "image": "🥬",
+      "sugarContent": 0.8,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "5",
+      "name": "芹菜",
+      "image": "🥬",
+      "sugarContent": 1.6,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "6",
+      "name": "白菜",
+      "image": "🥬",
+      "sugarContent": 1.8,
+      "glycemicIndex": 15,
+      "category": "蔬菜"
+    },
+    {
+      "id": "7",
+      "name": "豆腐",
+      "image": "🧈",
+      "sugarContent": 0.6,
+      "glycemicIndex": 15,
+      "category": "豆类"
+    },
+    {
+      "id": "8",
+      "name": "豆浆",
+      "image": "🥛",
+      "sugarContent": 1.2,
+      "glycemicIndex": 20,
+      "category": "豆类"
+    },
+    {
+      "id": "9",
+      "name": "毛豆",
+      "image": "🫘",
+      "sugarContent": 2.6,
+      "glycemicIndex": 25,
+      "category": "豆类"
+    },
+    {
+      "id": "10",
+      "name": "核桃",
+      "image": "🌰",
+      "sugarContent": 2.6,
+      "glycemicIndex": 15,
+      "category": "坚果"
+    },
+    {
+      "id": "11",
+      "name": "杏仁",
+      "image": "🥜",
+      "sugarContent": 4.8,
+      "glycemicIndex": 15,
+      "category": "坚果"
+    },
+    {
+      "id": "12",
+      "name": "花生",
+      "image": "🥜",
+      "sugarContent": 4.7,
+      "glycemicIndex": 15,
+      "category": "坚果"
+    },
+    {
+      "id": "13",
+      "name": "草莓",
+      "image": "🍓",
+      "sugarContent": 4.9,
+      "glycemicIndex": 40,
+      "category": "水果"
+    },
+    {
+      "id": "14",
+      "name": "蓝莓",
+      "image": "🫐",
+      "sugarContent": 10.0,
+      "glycemicIndex": 53,
+      "category": "水果"
+    },
+    {
+      "id": "15",
+      "name": "苹果",
+      "image": "🍎",
+      "sugarContent": 10.4,
+      "glycemicIndex": 36,
+      "category": "水果"
+    },
+    {
+      "id": "16",
+      "name": "橙子",
+      "image": "🍊",
+      "sugarContent": 9.4,
+      "glycemicIndex": 43,
+      "category": "水果"
+    },
+    {
+      "id": "17",
+      "name": "梨",
+      "image": "🍐",
+      "sugarContent": 9.8,
+      "glycemicIndex": 38,
+      "category": "水果"
+    },
+    {
+      "id": "18",
+      "name": "葡萄",
+      "image": "🍇",
+      "sugarContent": 16.0,
+      "glycemicIndex": 53,
+      "category": "水果"
+    },
+    {
+      "id": "19",
+      "name": "燕麦",
+      "image": "🌾",
+      "sugarContent": 1.0,
+      "glycemicIndex": 55,
+      "category": "谷物"
+    },
+    {
+      "id": "20",
+      "name": "糙米",
+      "image": "🍚",
+      "sugarContent": 0.9,
+      "glycemicIndex": 55,
+      "category": "谷物"
+    },
+    {
+      "id": "21",
+      "name": "全麦面包",
+      "image": "🍞",
+      "sugarContent": 3.3,
+      "glycemicIndex": 69,
+      "category": "谷物"
+    },
+    {
+      "id": "22",
+      "name": "白米饭",
+      "image": "🍚",
+      "sugarContent": 0.3,
+      "glycemicIndex": 73,
+      "category": "谷物"
+    },
+    {
+      "id": "23",
+      "name": "白面包",
+      "image": "🍞",
+      "sugarContent": 3.3,
+      "glycemicIndex": 75,
+      "category": "谷物"
+    },
+    {
+      "id": "24",
+      "name": "鸡胸肉",
+      "image": "🍗",
+      "sugarContent": 0.0,
+      "glycemicIndex": 0,
+      "category": "肉类"
+    },
+    {
+      "id": "25",
+      "name": "鱼肉",
+      "image": "🐟",
+      "sugarContent": 0.0,
+      "glycemicIndex": 0,
+      "category": "肉类"
+    },
+    {
+      "id": "26",
+      "name": "瘦牛肉",
+      "image": "🥩",
+      "sugarContent": 0.0,
+      "glycemicIndex": 0,
+      "category": "肉类"
+    },
+    {
+      "id": "27",
+      "name": "牛奶",
+      "image": "🥛",
+      "sugarContent": 4.8,
+      "glycemicIndex": 27,
+      "category": "乳制品"
+    },
+    {
+      "id": "28",
+      "name": "酸奶",
+      "image": "🥛",
+      "sugarContent": 4.7,
+      "glycemicIndex": 35,
+      "category": "乳制品"
+    },
+    {
+      "id": "29",
+      "name": "奶酪",
+      "image": "🧀",
+      "sugarContent": 0.5,
+      "glycemicIndex": 10,
+      "category": "乳制品"
+    },
+    {
+      "id": "30",
+      "name": "巧克力",
+      "image": "🍫",
+      "sugarContent": 63.0,
+      "glycemicIndex": 49,
+      "category": "甜食"
+    },
+    {
+      "id": "31",
+      "name": "蛋糕",
+      "image": "🍰",
+      "sugarContent": 45.0,
+      "glycemicIndex": 87,
+      "category": "甜食"
+    },
+    {
+      "id": "32",
+      "name": "冰淇淋",
+      "image": "🍦",
+      "sugarContent": 21.0,
+      "glycemicIndex": 61,
+      "category": "甜食"
+    },
+    {
+      "id": "33",
+      "name": "可乐",
+      "image": "🥤",
+      "sugarContent": 10.6,
+      "glycemicIndex": 63,
+      "category": "饮料"
+    },
+    {
+      "id": "34",
+      "name": "蜂蜜",
+      "image": "🍯",
+      "sugarContent": 82.0,
+      "glycemicIndex": 58,
+      "category": "甜食"
+    },
+    {
+      "id": "35",
+      "name": "白砂糖",
+      "image": "🍯",
+      "sugarContent": 100.0,
+      "glycemicIndex": 65,
+      "category": "甜食"
+    }
+  ]
+} 

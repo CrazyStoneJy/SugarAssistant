@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import Marked from 'react-native-marked';
+import Marked, { MarkedStyles } from 'react-native-marked';
 import { ThemedText } from './ThemedText';
 
 interface MarkdownTextProps {
@@ -22,7 +22,7 @@ export default function MarkdownText({ text, isUser }: MarkdownTextProps) {
   return (
     <Marked
       value={text}
-      styles={markdownStyles}
+      styles={markdownStyles as MarkedStyles}
       theme={{
         colors: {
           text: '#000000',
@@ -52,9 +52,7 @@ const markdownStyles = StyleSheet.create({
   paragraph: {
     fontSize: 16,
     lineHeight: 24,
-    marginVertical: 8,
     color: '#000000',
-    padding: 8
   },
   
   // 标题样式 - 更清晰的层次

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import MarkdownText from './MarkdownText';
 import { ThemedText } from './ThemedText';
 
@@ -9,10 +9,11 @@ interface ChatMessageProps {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  isThinking?: boolean;
   onSpeak?: (text: string) => void;
 }
 
-export default function ChatMessage({ text, isUser, timestamp, onSpeak }: ChatMessageProps) {
+export default function ChatMessage({ text, isUser, timestamp, isThinking = false, onSpeak }: ChatMessageProps) {
   const handleSpeak = () => {
     if (onSpeak) {
       onSpeak(text);
@@ -44,7 +45,16 @@ export default function ChatMessage({ text, isUser, timestamp, onSpeak }: ChatMe
             <Ionicons name="logo-github" size={20} color="#FFFFFF" />
           </View>
           <View style={styles.aiBubble}>
-            <MarkdownText text={text} isUser={isUser} />
+            {isThinking ? (
+              <View style={styles.thinkingContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+                <ThemedText style={styles.thinkingText}>
+                  AI正在思考中...
+                </ThemedText>
+              </View>
+            ) : (
+              <MarkdownText text={text} isUser={isUser} />
+            )}
             {/* <TouchableOpacity style={styles.speakButton} onPress={handleSpeak}>
               <Ionicons name="volume-high" size={16} color="#007AFF" />
             </TouchableOpacity> */}
@@ -112,8 +122,20 @@ const styles = StyleSheet.create({
     maxWidth: '75%',
     padding: 12,
     borderRadius: 18,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: '#ffffff',
     position: 'relative',
+  },
+  
+  // AI思考状态样式
+  thinkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  thinkingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
   },
   
   // 声音按钮 - 移到右下角
@@ -143,4 +165,4 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginHorizontal: 12,
   },
-}); 
+});

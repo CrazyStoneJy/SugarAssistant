@@ -20,9 +20,50 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="chat" options={{ headerShown: false }} />
-        <Stack.Screen name="sessions" options={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 300,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+          presentation: 'card',
+        }}
+      >
+        <Stack.Screen 
+          name="chat" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_bottom',
+            animationDuration: 250,
+          }} 
+        />
+        <Stack.Screen 
+          name="sessions" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+          }} 
+        />
+        <Stack.Screen 
+          name="foods" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            presentation: 'modal',
+          }} 
+        />
+        <Stack.Screen 
+          name="food-detail" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            presentation: 'card',
+          }} 
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar 
