@@ -33,6 +33,21 @@ interface DeepSeekResponse {
   };
 }
 
+interface DeepSeekStreamResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    delta: {
+      role?: 'assistant';
+      content?: string;
+    };
+    finish_reason: string | null;
+  }>;
+}
+
 class DeepSeekAPI {
   private apiKey: string;
   private baseUrl: string;
@@ -53,7 +68,7 @@ class DeepSeekAPI {
   }
 
   /**
-   * 发送聊天消息到DeepSeek API
+   * 发送聊天消息到DeepSeek API（非流式）
    */
   async chat(messages: DeepSeekMessage[], options: {
     temperature?: number;
@@ -83,8 +98,15 @@ class DeepSeekAPI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API请求失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
+        let errorMessage = `API请求失败: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage += ` - ${errorData.error?.message || errorData.message || '未知错误'}`;
+          console.error('API错误详情:', errorData);
+        } catch (parseError) {
+          console.error('无法解析错误响应:', parseError);
+        }
+        throw new Error(errorMessage);
       }
 
       const data: DeepSeekResponse = await response.json();
@@ -97,6 +119,144 @@ class DeepSeekAPI {
     } catch (error) {
       console.error('DeepSeek API调用失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 流式发送聊天消息到DeepSeek API
+   */
+  async chatStream(
+    messages: DeepSeekMessage[], 
+    onChunk: (chunk: string) => void,
+    onComplete: (fullResponse: string) => void,
+    onError: (error: Error) => void,
+    options: {
+      temperature?: number;
+      maxTokens?: number;
+    } = {}
+  ): Promise<void> {
+    if (!this.isConfigured()) {
+      const error = new Error('DeepSeek API未配置，请检查环境变量或手动配置API密钥');
+      console.error('API配置错误:', error.message);
+      onError(error);
+      return;
+    }
+
+    try {
+      const requestBody: DeepSeekRequest = {
+        model: this.model,
+        messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 1000,
+        stream: true, // 启用流式传输
+      };
+
+      // console.log('🔧 流式API请求配置:', {
+      //   url: `${this.baseUrl}/chat/completions`,
+      //   model: this.model,
+      //   messageCount: messages.length,
+      //   hasApiKey: !!this.apiKey,
+      // });
+
+      console.log("deepseek stream requestBody", JSON.stringify(requestBody));
+      
+
+                    // 使用XMLHttpRequest替代fetch，对流式数据支持更好
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.open('POST', `${this.baseUrl}/chat/completions`, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('Accept', 'text/event-stream');
+        xhr.setRequestHeader('Authorization', `Bearer ${this.apiKey || ''}`);
+        xhr.setRequestHeader('Cache-Control', 'no-cache');
+        
+        let fullResponse = '';
+        let buffer = '';
+        
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === XMLHttpRequest.LOADING) {
+            // 处理流式数据
+            const newData = xhr.responseText.substring(buffer.length);
+            buffer = xhr.responseText;
+            
+            if (newData) {
+              const lines = newData.split('\n');
+              
+              for (const line of lines) {
+                if (line.trim() === '') continue;
+                
+                console.log('📝 原始行:', line);
+                
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  
+                  console.log('📦 数据块:', data);
+                  
+                  if (data === '[DONE]') {
+                    console.log('✅ 收到流式传输完成信号');
+                    onComplete(fullResponse);
+                    resolve();
+                    return;
+                  }
+
+                  try {
+                    const parsed: DeepSeekStreamResponse = JSON.parse(data);
+                    // console.log('🔍 解析结果:', parsed);
+                    
+                    if (parsed.choices && parsed.choices.length > 0) {
+                      const choice = parsed.choices[0];
+                      
+                      if (choice.delta.content) {
+                        const content = choice.delta.content;
+                        fullResponse += content;
+                        // console.log('📤 发送内容块:', content);
+                        onChunk(content);
+                      }
+
+                      if (choice.finish_reason) {
+                        console.log('✅ 流式传输完成，原因:', choice.finish_reason);
+                        onComplete(fullResponse);
+                        resolve();
+                        return;
+                      }
+                    }
+                  } catch (parseError) {
+                    console.warn('解析SSE数据失败:', parseError, '原始数据:', data);
+                  }
+                } else {
+                  console.log('📝 非SSE数据行:', line);
+                }
+              }
+            }
+          } else if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+              console.log('✅ XMLHttpRequest流式传输完成');
+              onComplete(fullResponse);
+              resolve();
+            } else {
+              const error = new Error(`XMLHttpRequest失败: ${xhr.status} ${xhr.statusText}`);
+              console.error('XMLHttpRequest错误:', error);
+              onError(error);
+              reject(error);
+            }
+          }
+        };
+        
+        xhr.onerror = function() {
+          const error = new Error('XMLHttpRequest网络错误');
+          console.error('XMLHttpRequest网络错误:', error);
+          onError(error);
+          reject(error);
+        };
+        
+        xhr.send(JSON.stringify(requestBody));
+      });
+
+      
+    } catch (error) {
+      console.error('DeepSeek API流式调用失败:', error);
+      onError(error as Error);
     }
   }
 
@@ -179,7 +339,7 @@ export function autoInitAPI(): boolean {
 }
 
 /**
- * 发送消息到DeepSeek API
+ * 发送消息到DeepSeek API（非流式）
  */
 export async function sendMessageToDeepSeek(
   userMessage: string,
@@ -222,6 +382,54 @@ export async function sendMessageToDeepSeek(
 }
 
 /**
+ * 流式发送消息到DeepSeek API
+ */
+export async function sendMessageToDeepSeekStream(
+  userMessage: string,
+  conversationHistory: DeepSeekMessage[] = [],
+  onChunk: (chunk: string) => void,
+  onComplete: (fullResponse: string) => void,
+  onError: (error: Error) => void
+): Promise<void> {
+  if (!deepseekAPI) {
+    // 尝试自动初始化
+    if (!autoInitAPI()) {
+      throw new Error('DeepSeek API未初始化，请先调用initDeepSeekAPI()或配置环境变量');
+    }
+  }
+
+  if (!deepseekAPI?.isConfigured()) {
+    throw new Error('DeepSeek API未配置，请检查环境变量或手动配置API密钥');
+  }
+
+  try {
+    // 构建消息历史
+    const messages: DeepSeekMessage[] = [
+      deepseekAPI!.createSystemMessage(DEFAULT_SYSTEM_PROMPT),
+      ...conversationHistory,
+      deepseekAPI!.createUserMessage(userMessage),
+    ];
+
+    console.log("stream history messages", messages);
+
+    // 调用流式API
+    await deepseekAPI!.chatStream(
+      messages,
+      onChunk,
+      onComplete,
+      onError,
+      {
+        temperature: 0.7,
+        maxTokens: 1000,
+      }
+    );
+  } catch (error) {
+    console.error('流式发送消息到DeepSeek失败:', error);
+    onError(error as Error);
+  }
+}
+
+/**
  * 获取API使用情况
  */
 export function getAPIStatus(): {
@@ -238,4 +446,4 @@ export function getAPIStatus(): {
   };
 }
 
-export type { DeepSeekMessage, DeepSeekRequest, DeepSeekResponse };
+export type { DeepSeekMessage, DeepSeekRequest, DeepSeekResponse, DeepSeekStreamResponse };

@@ -1,14 +1,12 @@
-import { getInputBottomPadding, getInputContainerBottomPadding } from '@/utils/androidSafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-  Animated,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    Animated,
+    Keyboard,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 import VoiceInput from './VoiceInput';
@@ -88,9 +86,22 @@ export default function WeChatInput({
             placeholderTextColor="#999"
             multiline
             maxLength={500}
-            onFocus={() => setIsFocused(true)}
+            onFocus={() => {
+              setIsFocused(true);
+              console.log('输入框获得焦点');
+              // 确保输入框在键盘上方
+              setTimeout(() => {
+                inputRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                  console.log('输入框位置:', { x, y, width, height, pageX, pageY });
+                });
+              }, 100);
+            }}
             onBlur={() => setIsFocused(false)}
             editable={!showVoiceButton}
+            keyboardType="default"
+            returnKeyType="default"
+            blurOnSubmit={false}
+            enablesReturnKeyAutomatically={true}
           />
         </View>
 
@@ -155,14 +166,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F7F7',
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
-    paddingBottom: Platform.OS === 'ios' ? 20 : getInputContainerBottomPadding(),
-    zIndex: 1,
+    paddingBottom: 0, // 由父组件控制底部间距
+    zIndex: 1000,
+    elevation: 10,
+    position: 'relative',
+    // 确保输入框固定在底部
+    alignSelf: 'flex-end',
+    width: '100%',
   },
   inputArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 4, // 减少垂直间距，从8改为4
     minHeight: 44,
   },
   textInputContainer: {
@@ -172,13 +188,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5EA',
     minHeight: 36,
-    maxHeight: 100,
+    maxHeight: 120,
     marginRight: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   textInput: {
     flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6, // 减少内部垂直间距，从8改为6
     fontSize: 16,
     lineHeight: 20,
     textAlignVertical: 'center',
@@ -216,9 +240,8 @@ const styles = StyleSheet.create({
   },
   voiceContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 12, // 减少垂直间距，从20改为12
     paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'android' ? getInputBottomPadding() : 20,
   },
   voiceButton: {
     width: 80,

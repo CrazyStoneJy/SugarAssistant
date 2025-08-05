@@ -54,6 +54,7 @@ const markdownStyles = StyleSheet.create({
     lineHeight: 24,
     marginVertical: 8,
     color: '#000000',
+    padding: 8
   },
   
   // 标题样式 - 更清晰的层次

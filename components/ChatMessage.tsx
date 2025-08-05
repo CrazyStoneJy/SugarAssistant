@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ThemedText } from './ThemedText';
+import { StyleSheet, View } from 'react-native';
 import MarkdownText from './MarkdownText';
+import { ThemedText } from './ThemedText';
 
 interface ChatMessageProps {
   text: string;
@@ -45,9 +45,9 @@ export default function ChatMessage({ text, isUser, timestamp, onSpeak }: ChatMe
           </View>
           <View style={styles.aiBubble}>
             <MarkdownText text={text} isUser={isUser} />
-            <TouchableOpacity style={styles.speakButton} onPress={handleSpeak}>
+            {/* <TouchableOpacity style={styles.speakButton} onPress={handleSpeak}>
               <Ionicons name="volume-high" size={16} color="#007AFF" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       )}

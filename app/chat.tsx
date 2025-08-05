@@ -4,16 +4,17 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
 import { generateAIResponse } from '@/utils/aiResponse';
-import { getKeyboardVerticalOffset, getSafeAreaBottomHeight, getStatusBarHeight } from '@/utils/androidSafeArea';
+import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
 
-import { autoInitAPI, isAPIInitialized, sendMessageToDeepSeek } from '@/utils/deepseekApi';
+import { autoInitAPI, isAPIInitialized } from '@/utils/deepseekApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -39,6 +40,7 @@ export default function ChatScreen() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   const flatListRef = useRef<FlatList>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // 使用 useFocusEffect 监听页面焦点变化
   useFocusEffect(
@@ -50,6 +52,34 @@ export default function ChatScreen() {
 
   useEffect(() => {
     initializeChat();
+  }, []);
+
+  // 监听键盘事件
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      console.log('键盘弹出，高度:', e.endCoordinates.height);
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      console.log('键盘收起');
+    });
+
+    const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+
+    const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+      keyboardWillShowListener?.remove();
+      keyboardWillHideListener?.remove();
+    };
   }, []);
 
   const initializeChat = async () => {
@@ -144,29 +174,9 @@ export default function ChatScreen() {
       // 生成AI回复
       let aiResponseText: string;
       
-      if (isAPIAvailable && isAPIInitialized()) {
-        // 使用DeepSeek API
-        try {
-          console.log('🤖 使用DeepSeek API生成回复...');
-          
-          // 构建对话历史
-          const conversationHistory = messages
-            .slice(-10) // 只保留最近10条消息，避免token过多
-            .map(msg => ({
-              role: msg.isUser ? 'user' as const : 'assistant' as const,
-              content: msg.text,
-            }));
-          
-          console.log('📝 对话历史长度:', conversationHistory.length);
-          aiResponseText = await sendMessageToDeepSeek(text.trim(), conversationHistory);
-          console.log('✅ DeepSeek API回复成功:', aiResponseText.substring(0, 50) + '...');
-        } catch (error) {
-          console.error('DeepSeek API调用失败:', error);
-          console.log('🔄 回退到模拟AI回复...');
-          // 如果API调用失败，使用模拟回复
-          const mockResponse = await generateAIResponse(text.trim());
-          aiResponseText = mockResponse.text;
-        }
+      // FIXME: 流式回复
+      // isAPIAvailable && isAPIInitialized()
+      if (false) {
       } else {
         // 使用模拟AI回复
         console.log('🎭 使用模拟AI生成回复...');
@@ -230,14 +240,8 @@ export default function ChatScreen() {
     />
   );
 
-  const getStatusText = () => {
-    if (apiSource === 'env') {
-      return '🟢 DeepSeek API (环境变量)';
-    } else if (apiSource === 'manual') {
-      return '🟡 DeepSeek API (手动配置)';
-    } else {
-      return '🔴 使用模拟AI';
-    }
+  const getTitleName = () => {
+    return "控糖小助手"
   };
 
   const getLoadingText = () => {
@@ -273,79 +277,80 @@ export default function ChatScreen() {
         backgroundColor="transparent" 
         translucent={Platform.OS === 'android'}
       />
-      <ThemedView style={styles.container}>
-        {/* 顶部状态栏 */}
-        <View style={styles.statusBar}>
-          <ThemedText style={styles.statusText}>
-            {getStatusText()}
-          </ThemedText>
-          <View style={styles.statusButtons}>
-            <TouchableOpacity 
-              onPress={scrollToTop} 
-              style={styles.scrollButton}
-            >
-              <Ionicons name="arrow-up-outline" size={20} color="#007AFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
-              <Ionicons name="list-outline" size={20} color="#007AFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-
-
-        <View style={styles.chatContainer}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={item => item.id}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContentContainer}
-            onContentSizeChange={() => {
-              // 只在有新消息添加时才自动滚动到底部
-              // 这里不自动滚动，让用户手动控制
-            }}
-            onLayout={() => {
-              // 只在有新消息添加时才自动滚动到底部
-              // 这里不自动滚动，让用户手动控制
-            }}
-            showsVerticalScrollIndicator={true}
-            scrollEnabled={true}
-            bounces={true}
-            alwaysBounceVertical={false}
-            removeClippedSubviews={false}
-            keyboardShouldPersistTaps="always"
-            keyboardDismissMode="on-drag"
-            inverted={false}
-            nestedScrollEnabled={false}
-          />
-          
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <ThemedText style={styles.loadingText}>
-                {getLoadingText()}
-              </ThemedText>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ThemedView style={styles.container}>
+          {/* 顶部状态栏 */}
+          <View style={styles.statusBar}>
+            <ThemedText style={styles.statusText}>
+              {getTitleName()}
+            </ThemedText>
+            <View style={styles.statusButtons}>
+              <TouchableOpacity 
+                onPress={scrollToTop} 
+                style={styles.scrollButton}
+              >
+                <Ionicons name="arrow-up-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
+                <Ionicons name="list-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
+          </View>
 
-        <KeyboardAvoidingView
-          style={styles.inputContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? getKeyboardVerticalOffset() : 0}
-          enabled={Platform.OS === 'ios'}
-        >
-          <WeChatInput
-            value={inputText}
-            onChangeText={setInputText}
-            onSend={sendMessage}
-            onVoiceResult={handleVoiceResult}
-            disabled={isLoading}
-          />
-        </KeyboardAvoidingView>
-      </ThemedView>
+          {/* 聊天内容区域 */}
+          <View style={styles.chatContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={item => item.id}
+              style={styles.messagesList}
+              contentContainerStyle={styles.messagesContentContainer}
+              onContentSizeChange={() => {
+                // 只在有新消息添加时才自动滚动到底部
+                // 这里不自动滚动，让用户手动控制
+              }}
+              onLayout={() => {
+                // 只在有新消息添加时才自动滚动到底部
+                // 这里不自动滚动，让用户手动控制
+              }}
+              showsVerticalScrollIndicator={true}
+              scrollEnabled={true}
+              bounces={true}
+              alwaysBounceVertical={false}
+              removeClippedSubviews={false}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              inverted={false}
+              nestedScrollEnabled={false}
+            />
+            
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#007AFF" />
+                <ThemedText style={styles.loadingText}>
+                  {getLoadingText()}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          {/* 输入框区域 - 固定在底部 */}
+          <View style={styles.inputContainer}>
+            <WeChatInput
+              value={inputText}
+              onChangeText={setInputText}
+              onSend={sendMessage}
+              onVoiceResult={handleVoiceResult}
+              disabled={isLoading}
+            />
+          </View>
+        </ThemedView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -353,7 +358,11 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#eeeeee',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
@@ -371,8 +380,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
   },
   statusText: {
-    fontSize: 14,
+    fontSize: 18,
     color: '#666',
+    fontWeight: '700',
   },
   statusButtons: {
     flexDirection: 'row',
@@ -387,9 +397,16 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   inputContainer: {
     backgroundColor: 'transparent',
+    position: 'relative',
+    zIndex: 1000,
+    marginBottom: Platform.OS === 'android' ? -5 : 0, // 减少Android的负边距，从-10改为-5
+  },
+  keyboardAvoidingContent: {
+    flex: 1,
   },
   messagesList: {
     flex: 1,
@@ -397,8 +414,8 @@ const styles = StyleSheet.create({
   },
   messagesContentContainer: {
     flexGrow: 1,
-    paddingBottom: Platform.OS === 'android' ? 20 : getSafeAreaBottomHeight(),
     paddingTop: 10,
+    paddingBottom: 8, // 添加底部间距，确保最后一条消息和输入框之间有适当距离
   },
   loadingContainer: {
     flexDirection: 'row',

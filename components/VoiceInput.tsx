@@ -1,4 +1,4 @@
-import { checkAudioQuality, getAudioQualitySuggestions, isSuitableForSpeechRecognition } from '@/utils/audioQualityChecker';
+import { checkAudioQuality, getAudioQualitySuggestions, isSuitableForSpeechRecognition, preprocessAudio } from '@/utils/audioQualityChecker';
 import { checkSpeechRecognitionPermission, convertSpeechToText, getSpeechRecognitionStatus } from '@/utils/speechToText';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -75,24 +75,24 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
         playsInSilentModeIOS: true,
       });
 
-      // 使用更适合语音识别的录音设置
+      // 使用优化的录音设置，确保高质量音频
       const { recording } = await Audio.Recording.createAsync({
         android: {
           extension: '.wav',
           outputFormat: 1, // PCM_16BIT
           audioEncoder: 1, // PCM_16BIT
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 256000,
+          sampleRate: 16000, // 匹配百度API要求
+          numberOfChannels: 1, // 单声道
+          bitRate: 256000, // 高质量比特率
         },
         ios: {
           extension: '.wav',
           outputFormat: 1, // LINEARPCM
-          audioQuality: 1, // HIGH
-          sampleRate: 16000,
-          numberOfChannels: 1,
-          bitRate: 256000,
-          linearPCMBitDepth: 16,
+          audioQuality: 2, // MAX - 最高质量
+          sampleRate: 16000, // 匹配百度API要求
+          numberOfChannels: 1, // 单声道
+          bitRate: 256000, // 高质量比特率
+          linearPCMBitDepth: 16, // 16位深度
           linearPCMIsBigEndian: false,
           linearPCMIsFloat: false,
         },
@@ -121,9 +121,12 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
       setRecording(null);
 
       if (uri) {
-        // 检查音频质量
         try {
-          const audioQuality = await checkAudioQuality(uri);
+          // 预处理音频文件
+          const processedUri = await preprocessAudio(uri);
+          
+          // 检查音频质量
+          const audioQuality = await checkAudioQuality(processedUri);
           console.log('🎵 音频质量检查:', audioQuality);
           
           if (!isSuitableForSpeechRecognition(audioQuality)) {
@@ -134,7 +137,7 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
           }
           
           // 调用语音转文本功能
-          const recognizedText = await convertSpeechToText(uri);
+          const recognizedText = await convertSpeechToText(processedUri);
           if (recognizedText) {
             onVoiceResult(recognizedText);
           } else {
@@ -230,8 +233,8 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingBottom: Platform.OS === 'android' ? 0 : 20,
+    paddingVertical: 12, // 减少垂直间距，从20改为12
+    paddingBottom: Platform.OS === 'android' ? 0 : 12, // 减少Android底部间距，从20改为12
     zIndex: 1,
   },
   button: {
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: 8, // 减少顶部间距，从12改为8
   },
   statusText: {
     fontSize: 12,
@@ -260,6 +263,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FF3B30',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 6, // 减少顶部间距，从8改为6
   },
 }); 

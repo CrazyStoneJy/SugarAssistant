@@ -16,7 +16,7 @@ export const getStatusBarHeight = (): number => {
 export const getSafeAreaBottomHeight = (): number => {
   if (Platform.OS === 'android') {
     // Android设备使用更小的底部padding，让输入框更贴近底部
-    return Math.max(8, getStatusBarHeight() * 0.3);
+    return Math.max(4, getStatusBarHeight() * 0.2); // 进一步减少，从8改为4，从0.3改为0.2
   }
   return 20; // iOS默认值
 };
@@ -27,7 +27,7 @@ export const getSafeAreaBottomHeight = (): number => {
 export const getInputBottomPadding = (): number => {
   if (Platform.OS === 'android') {
     // 输入框使用最小的底部padding，让输入框贴近底部
-    return 2;
+    return 1; // 进一步减少，从2改为1
   }
   return 20; // iOS默认值
 };
@@ -38,7 +38,7 @@ export const getInputBottomPadding = (): number => {
 export const getInputContainerBottomPadding = (): number => {
   if (Platform.OS === 'android') {
     // 输入框容器使用更小的底部padding
-    return 0;
+    return 0; // 保持为0
   }
   return 20; // iOS默认值
 };

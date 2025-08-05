@@ -88,10 +88,27 @@ async function audioToBase64(audioUri: string): Promise<{ base64: string; origin
     
     const originalLength = fileInfo.size || 0;
     
+    // 验证音频文件大小
+    if (originalLength < 1024) {
+      throw new Error('音频文件太小，可能录音时间过短');
+    }
+    
+    if (originalLength > 100 * 1024 * 1024) {
+      throw new Error('音频文件太大，请缩短录音时间');
+    }
+    
+    console.log('📁 音频文件信息:', {
+      uri: audioUri,
+      size: originalLength,
+      sizeKB: Math.round(originalLength / 1024),
+    });
+    
     // 读取文件为Base64编码
     const audioData = await FileSystem.readAsStringAsync(audioUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
+    
+    console.log('✅ 音频文件转Base64成功');
     
     return {
       base64: audioData,
@@ -152,6 +169,16 @@ export async function recognizeSpeechWithBaidu(audioUri: string): Promise<string
     
     // console.log("baidu speech body", body);
 
+    console.log('🌐 发送百度语音API请求...');
+    console.log('📊 请求参数:', {
+      format: "pcm",
+      rate: 16000,
+      dev_pid: 80001,
+      channel: 1,
+      len: audioData.originalLength,
+      cuid: getBaiduSpeechConfig().appId,
+    });
+
     const response = await fetch(speechUrl, {
       method: 'POST',
       headers: {
@@ -160,16 +187,72 @@ export async function recognizeSpeechWithBaidu(audioUri: string): Promise<string
       body: body,
     });
 
+    console.log('📡 API响应状态:', response.status, response.statusText);
+
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+    }
+
     const data: BaiduSpeechResponse = await response.json();
 
-    console.log("baidu speech response", data);
+    console.log("📋 百度语音API响应:", data);
 
     if (data.err_no !== 0) {
-      throw new Error(`百度语音识别失败: ${data.err_msg} (错误码: ${data.err_no})`);
+      console.error('❌ 百度语音API错误:', {
+        errorCode: data.err_no,
+        errorMessage: data.err_msg,
+        sn: data.sn,
+      });
+      
+      // 根据错误码提供具体建议
+      let suggestion = '';
+      switch (data.err_no) {
+        case 3300:
+          suggestion = '请检查输入参数是否正确';
+          break;
+        case 3301:
+          suggestion = '音频质量过差，请重新录音';
+          break;
+        case 3302:
+          suggestion = '鉴权失败，请检查API Key和Secret Key';
+          break;
+        case 3303:
+          suggestion = '服务器后端问题，请稍后重试';
+          break;
+        case 3304:
+          suggestion = '请求频率超限，请稍后重试';
+          break;
+        case 3305:
+          suggestion = '日请求量超限，请明天再试';
+          break;
+        case 3307:
+          suggestion = '识别出错，请重新录音';
+          break;
+        case 3308:
+          suggestion = '音频过长，请缩短录音时间';
+          break;
+        case 3309:
+          suggestion = '音频数据问题，请重新录音';
+          break;
+        case 3310:
+          suggestion = '音频文件过大，请缩短录音时间';
+          break;
+        case 3311:
+          suggestion = '采样率不正确，请检查音频格式';
+          break;
+        case 3312:
+          suggestion = '音频格式不支持，请使用PCM格式';
+          break;
+        default:
+          suggestion = '未知错误，请检查网络连接和API配置';
+      }
+      
+      throw new Error(`百度语音识别失败: ${data.err_msg} (错误码: ${data.err_no}) - ${suggestion}`);
     }
 
     if (!data.result || data.result.length === 0) {
-      throw new Error('语音识别结果为空');
+      console.error('❌ 语音识别结果为空');
+      throw new Error('语音识别结果为空，请重新录音');
     }
 
     const recognizedText = data.result[0];
