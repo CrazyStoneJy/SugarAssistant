@@ -3,6 +3,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
+import * as Updates from 'expo-updates';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -12,6 +14,25 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
+  // 初始化 expo-updates
+  useEffect(() => {
+    async function checkForUpdates() {
+      try {
+        if (Updates.isEnabled) {
+          const update = await Updates.checkForUpdateAsync();
+          if (update.isAvailable) {
+            await Updates.fetchUpdateAsync();
+            await Updates.reloadAsync();
+          }
+        }
+      } catch (error) {
+        console.log('更新检查失败:', error);
+      }
+    }
+
+    checkForUpdates();
+  }, []);
 
   if (!loaded) {
     // Async font loading only occurs in development.
