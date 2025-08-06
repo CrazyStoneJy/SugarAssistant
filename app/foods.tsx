@@ -7,15 +7,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  FlatList,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface FoodItem {
@@ -27,25 +27,37 @@ interface FoodItem {
   category: string;
 }
 
+// 排序类型
+type SortType = 'default' | 'gi-asc' | 'gi-desc' | 'sugar-asc' | 'sugar-desc';
+
 // 从JSON文件导入食物数据
 const foodsData: FoodItem[] = foodsJson.foods;
 
 export default function FoodsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('全部');
+  const [sortType, setSortType] = useState<SortType>('default');
+  const [showGiDropdown, setShowGiDropdown] = useState(false);
+  const [showSugarDropdown, setShowSugarDropdown] = useState(false);
   
-  // 按升糖指数和含糖量排序
+  // 按分类筛选和排序
   const sortedFoods = useMemo(() => {
-    return foodsData
-      .filter(food => selectedCategory === '全部' || food.category === selectedCategory)
-      .sort((a, b) => {
-        // 首先按升糖指数排序
-        if (a.glycemicIndex !== b.glycemicIndex) {
-          return a.glycemicIndex - b.glycemicIndex;
-        }
-        // 升糖指数相同时按含糖量排序
-        return a.sugarContent - b.sugarContent;
-      });
-  }, [selectedCategory]);
+    let filteredFoods = foodsData.filter(food => 
+      selectedCategory === '全部' || food.category === selectedCategory
+    );
+
+    switch (sortType) {
+      case 'gi-asc':
+        return filteredFoods.sort((a, b) => a.glycemicIndex - b.glycemicIndex);
+      case 'gi-desc':
+        return filteredFoods.sort((a, b) => b.glycemicIndex - a.glycemicIndex);
+      case 'sugar-asc':
+        return filteredFoods.sort((a, b) => a.sugarContent - b.sugarContent);
+      case 'sugar-desc':
+        return filteredFoods.sort((a, b) => b.sugarContent - a.sugarContent);
+      default:
+        return filteredFoods;
+    }
+  }, [selectedCategory, sortType]);
 
   // 获取所有分类
   const categories = useMemo(() => {
@@ -60,6 +72,14 @@ export default function FoodsScreen() {
       return '#F44336'; // 红色 - 高升糖
     };
 
+    const getSugarLevel = (sugar: number) => {
+      if (sugar <= 5) return { level: '低糖', color: '#4CAF50', suitable: '适合' };
+      if (sugar <= 15) return { level: '中糖', color: '#FF9800', suitable: '谨慎' };
+      return { level: '高糖', color: '#F44336', suitable: '避免' };
+    };
+
+    const sugarLevel = getSugarLevel(item.sugarContent);
+
     return (
       <TouchableOpacity 
         style={styles.foodItem}
@@ -72,11 +92,11 @@ export default function FoodsScreen() {
           {item.name}
         </Text>
         <View style={styles.foodInfo}>
-          <Text style={styles.sugarText}>
-            糖: {item.sugarContent}g
+          <Text style={[styles.sugarLevelText, { color: sugarLevel.color }]}>
+            {sugarLevel.level}
           </Text>
-          <Text style={[styles.giText, { color: getGlycemicColor(item.glycemicIndex) }]}>
-            GI: {item.glycemicIndex}
+          <Text style={[styles.suitableText, { color: sugarLevel.color }]}>
+            {sugarLevel.suitable}
           </Text>
         </View>
       </TouchableOpacity>
@@ -87,6 +107,11 @@ export default function FoodsScreen() {
     Alert.alert(
       '数据说明',
       `含糖量：指每100克食物中糖分的含量（克）。数据来源于USDA营养数据库、中国食物成分表等权威营养数据库。
+
+糖含量等级：
+• ≤5g：低糖 - 适合糖不耐受和糖尿病人群
+• 6-15g：中糖 - 谨慎食用，建议控制量
+• >15g：高糖 - 避免食用
 
 升糖指数(GI)：反映食物升高血糖的速度和能力。
 • ≤55：低升糖
@@ -114,6 +139,37 @@ export default function FoodsScreen() {
       ]}>
         {item}
       </Text>
+    </TouchableOpacity>
+  );
+
+  const handleSortSelection = (type: SortType) => {
+    setSortType(type);
+    setShowGiDropdown(false);
+    setShowSugarDropdown(false);
+  };
+
+  const closeDropdowns = () => {
+    setShowGiDropdown(false);
+    setShowSugarDropdown(false);
+  };
+
+  const getSortButtonText = () => {
+    switch (sortType) {
+      case 'gi-asc': return '升糖指数 ↑';
+      case 'gi-desc': return '升糖指数 ↓';
+      case 'sugar-asc': return '含糖量 ↑';
+      case 'sugar-desc': return '含糖量 ↓';
+      default: return '默认排序';
+    }
+  };
+
+  const renderDropdownItem = (type: SortType, label: string, icon: string) => (
+    <TouchableOpacity
+      style={styles.dropdownItem}
+      onPress={() => handleSortSelection(type)}
+    >
+      <Ionicons name={icon as any} size={16} color="#666" />
+      <Text style={styles.dropdownItemText}>{label}</Text>
     </TouchableOpacity>
   );
 
@@ -149,22 +205,103 @@ export default function FoodsScreen() {
             />
           </View>
 
+          {/* 排序Tab */}
+          <View style={styles.sortContainer}>
+            <Text style={styles.sortTitle}>排序方式：</Text>
+            <View style={styles.sortTabs}>
+              {/* 升糖指数排序Tab */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.sortTab,
+                    (sortType === 'gi-asc' || sortType === 'gi-desc') && styles.sortTabActive
+                  ]}
+                  onPress={() => {
+                    setShowSugarDropdown(false);
+                    setShowGiDropdown(!showGiDropdown);
+                  }}
+                >
+                  <Text style={[
+                    styles.sortTabText,
+                    (sortType === 'gi-asc' || sortType === 'gi-desc') && styles.sortTabTextActive
+                  ]}>
+                    升糖指数
+                  </Text>
+                  {(sortType === 'gi-asc' || sortType === 'gi-desc') && (
+                    <Ionicons 
+                      name={sortType === 'gi-asc' ? "arrow-up" : "arrow-down"} 
+                      size={12} 
+                      color="#ffffff" 
+                      style={styles.sortDirectionIcon}
+                    />
+                  )}
+                  <Ionicons 
+                    name={showGiDropdown ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color={(sortType === 'gi-asc' || sortType === 'gi-desc') ? '#ffffff' : '#666'} 
+                  />
+                </TouchableOpacity>
+                
+                {/* 升糖指数下拉菜单 */}
+                {showGiDropdown && (
+                  <View style={styles.dropdown}>
+                    {renderDropdownItem('gi-asc', '从低到高', 'arrow-up')}
+                    {renderDropdownItem('gi-desc', '从高到低', 'arrow-down')}
+                  </View>
+                )}
+              </View>
 
-
-          {/* 图例说明 */}
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
-              <Text style={styles.legendText}>低升糖 (≤55)</Text>
+              {/* 含糖量排序Tab */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.sortTab,
+                    (sortType === 'sugar-asc' || sortType === 'sugar-desc') && styles.sortTabActive
+                  ]}
+                  onPress={() => {
+                    setShowGiDropdown(false);
+                    setShowSugarDropdown(!showSugarDropdown);
+                  }}
+                >
+                  <Text style={[
+                    styles.sortTabText,
+                    (sortType === 'sugar-asc' || sortType === 'sugar-desc') && styles.sortTabTextActive
+                  ]}>
+                    含糖量
+                  </Text>
+                  {(sortType === 'sugar-asc' || sortType === 'sugar-desc') && (
+                    <Ionicons 
+                      name={sortType === 'sugar-asc' ? "arrow-up" : "arrow-down"} 
+                      size={12} 
+                      color="#ffffff" 
+                      style={styles.sortDirectionIcon}
+                    />
+                  )}
+                  <Ionicons 
+                    name={showSugarDropdown ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color={(sortType === 'sugar-asc' || sortType === 'sugar-desc') ? '#ffffff' : '#666'} 
+                  />
+                </TouchableOpacity>
+                
+                {/* 含糖量下拉菜单 */}
+                {showSugarDropdown && (
+                  <View style={styles.dropdown}>
+                    {renderDropdownItem('sugar-asc', '从低到高', 'arrow-up')}
+                    {renderDropdownItem('sugar-desc', '从高到低', 'arrow-down')}
+                  </View>
+                )}
+              </View>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#FF9800' }]} />
-              <Text style={styles.legendText}>中升糖 (56-70)</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#F44336' }]} />
-              <Text style={styles.legendText}>高升糖 ({'>'}70)</Text>
-            </View>
+            
+            {/* 点击外部关闭下拉菜单的覆盖层 */}
+            {(showGiDropdown || showSugarDropdown) && (
+              <TouchableOpacity
+                style={styles.overlay}
+                activeOpacity={1}
+                onPress={closeDropdowns}
+              />
+            )}
           </View>
 
           {/* 食物列表 */}
@@ -242,28 +379,83 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  sortContainer: {
     backgroundColor: '#ffffff',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  legendItem: {
+  sortTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  sortTabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  tabContainer: {
+    position: 'relative',
+  },
+  sortTab: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  sortTabActive: {
+    backgroundColor: '#007AFF',
+  },
+  sortTabText: {
+    fontSize: 12,
+    color: '#666',
     marginRight: 4,
   },
-  legendText: {
-    fontSize: 10,
-    color: '#666',
+  sortTabTextActive: {
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: 35,
+    left: -10,
+    right: -10,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    color: '#333',
+    marginLeft: 8,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
   },
   foodList: {
     padding: 16,
@@ -308,15 +500,18 @@ const styles = StyleSheet.create({
   foodInfo: {
     alignItems: 'center',
   },
-  sugarText: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-  },
-  giText: {
-    fontSize: 10,
-    color: '#007AFF',
+  sugarLevelText: {
+    fontSize: 9,
     fontWeight: '600',
+    marginTop: 2,
+  },
+  suitableText: {
+    fontSize: 8,
+    marginTop: 1,
+  },
+  sortDirectionIcon: {
+    marginLeft: 2,
+    marginRight: 4,
   },
 
 }); 

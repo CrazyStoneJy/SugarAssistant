@@ -63,7 +63,14 @@ export default function FoodDetailScreen() {
     return { level: '高', color: '#F44336' };
   };
 
+  const getSugarLevel = (sugar: number) => {
+    if (sugar <= 5) return { level: '低糖', color: '#4CAF50', suitable: '适合' };
+    if (sugar <= 15) return { level: '中糖', color: '#FF9800', suitable: '谨慎' };
+    return { level: '高糖', color: '#F44336', suitable: '避免' };
+  };
+
   const glycemicLevel = getGlycemicLevel(food.glycemicIndex);
+  const sugarLevel = getSugarLevel(food.sugarContent);
 
   return (
     <CustomTransition isVisible={true} animationType="slide" duration={350}>
@@ -101,16 +108,30 @@ export default function FoodDetailScreen() {
               <View style={styles.nutritionGrid}>
                 <View style={styles.nutritionItem}>
                   <ThemedText style={styles.nutritionLabel}>含糖量</ThemedText>
-                  <ThemedText style={styles.nutritionValue}>{food.sugarContent}g</ThemedText>
+                  <ThemedText style={[styles.nutritionValue, { color: sugarLevel.color }]}>
+                    {food.sugarContent}g
+                  </ThemedText>
+                  <ThemedText style={[styles.sugarLevelText, { color: sugarLevel.color }]}>
+                    {sugarLevel.level}
+                  </ThemedText>
                 </View>
                 <View style={styles.nutritionItem}>
                   <ThemedText style={styles.nutritionLabel}>升糖指数</ThemedText>
-                  <ThemedText style={styles.nutritionValue}>{food.glycemicIndex}</ThemedText>
+                  <ThemedText style={[styles.nutritionValue, { color: glycemicLevel.color }]}>
+                    {food.glycemicIndex}
+                  </ThemedText>
+                  <ThemedText style={[styles.giLevelText, { color: glycemicLevel.color }]}>
+                    {glycemicLevel.level}升糖
+                  </ThemedText>
                 </View>
                 <View style={styles.nutritionItem}>
-                  <ThemedText style={styles.nutritionLabel}>升糖等级</ThemedText>
-                  <ThemedText style={[styles.nutritionValue, { color: glycemicLevel.color }]}>
-                    {glycemicLevel.level}
+                  <ThemedText style={styles.nutritionLabel}>是否适合</ThemedText>
+                  <ThemedText style={[styles.suitableValue, { color: sugarLevel.color }]}>
+                    {sugarLevel.suitable}
+                  </ThemedText>
+                  <ThemedText style={styles.suitableDescription}>
+                    {sugarLevel.suitable === '适合' ? '糖不耐受人群可食用' : 
+                     sugarLevel.suitable === '谨慎' ? '建议控制食用量' : '建议避免食用'}
                   </ThemedText>
                 </View>
                 <View style={styles.nutritionItem}>
@@ -288,6 +309,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  sugarLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  giLevelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  suitableValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  suitableDescription: {
+    fontSize: 10,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 12,
   },
   descriptionSection: {
     backgroundColor: '#ffffff',
