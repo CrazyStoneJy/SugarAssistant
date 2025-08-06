@@ -163,8 +163,8 @@ export default function WeChatInput({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F7F7F7',
-    borderTopWidth: 1,
+    backgroundColor: 'white',
+    // borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
     paddingBottom: 0, // 由父组件控制底部间距
     // zIndex: 1000,

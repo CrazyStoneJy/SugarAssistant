@@ -13,6 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -39,15 +40,19 @@ export default function ChatScreen() {
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // 使用 useFocusEffect 监听页面焦点变化
   useFocusEffect(
     useCallback(() => {
       // 每次页面获得焦点时重新加载聊天历史
       loadChatHistory();
+      
+      // 页面获得焦点时重置键盘高度
+      setKeyboardHeight(0);
+      console.log('页面获得焦点，重置键盘高度');
     }, [])
   );
 
@@ -64,31 +69,41 @@ export default function ChatScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // 监听键盘事件
+  // 监听键盘事件 - 暂时禁用手动调整
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
       console.log('键盘弹出，高度:', e.endCoordinates.height);
+      // 暂时不调整键盘高度，让系统自动处理
+      setKeyboardHeight(0);
     });
 
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
       console.log('键盘收起');
-    });
-
-    const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-
-    const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardHeight(0);
     });
 
     return () => {
       keyboardDidShowListener?.remove();
       keyboardDidHideListener?.remove();
-      keyboardWillShowListener?.remove();
-      keyboardWillHideListener?.remove();
+    };
+  }, []);
+
+  // 监听应用状态变化
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        console.log('应用返回前台，重置键盘状态');
+        setKeyboardHeight(0);
+      } else if (nextAppState === 'background') {
+        console.log('应用进入后台');
+        setKeyboardHeight(0);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription?.remove();
     };
   }, []);
 
@@ -406,6 +421,8 @@ export default function ChatScreen() {
       />
       <KeyboardAvoidingView 
         style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={true}
       >
         <ThemedView style={styles.container}>
           {/* 顶部状态栏 */}
@@ -457,7 +474,7 @@ export default function ChatScreen() {
             />
           </View>
 
-          {/* 输入框区域 - 固定在底部 */}
+          {/* 输入框区域 */}
           <View style={styles.inputContainer}>
             <WeChatInput
               value={inputText}
@@ -484,6 +501,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
     // backgroundColor: 'red',
   },
   statusBar: {
@@ -529,11 +547,13 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     backgroundColor: 'transparent',
-    // marginBottom: 0, // 确保没有底部边距
   },
   inputContainer: {
-    backgroundColor: 'transparent',
-    // zIndex: 1000,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
   keyboardAvoidingContent: {
     flex: 1,
