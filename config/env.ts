@@ -36,6 +36,13 @@ console.log('🔧 环境变量配置:', {
   BAIDU_SECRET_KEY: ENV_CONFIG.BAIDU_SECRET_KEY ? `${ENV_CONFIG.BAIDU_SECRET_KEY.substring(0, 8)}...` : '未配置',
 });
 
+// 生产环境下的错误处理
+if (__DEV__) {
+  console.log('🔧 开发环境 - 环境变量已加载');
+} else {
+  console.log('🔧 生产环境 - 使用默认配置');
+}
+
 // 检查环境变量是否已配置
 export function isEnvConfigured(): boolean {
   const isConfigured = !!ENV_CONFIG.DEEPSEEK_API_KEY && 

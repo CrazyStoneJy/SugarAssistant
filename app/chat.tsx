@@ -357,6 +357,36 @@ export default function ChatScreen() {
     );
   }
 
+  // 添加错误处理
+  if (!messages || messages.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor="transparent" 
+          translucent={Platform.OS === 'android'}
+        />
+        <ThemedView style={styles.container}>
+          <View style={styles.errorContainer}>
+            <Ionicons name="chatbubbles-outline" size={64} color="#999" />
+            <ThemedText style={styles.errorText}>欢迎使用SugarAssistant</ThemedText>
+            <ThemedText style={styles.errorSubtext}>
+              开始新的对话来创建第一个会话
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={() => {
+                initializeChat();
+              }}
+            >
+              <ThemedText style={styles.retryButtonText}>重新加载</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar 
@@ -500,5 +530,36 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     color: '#999',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 
