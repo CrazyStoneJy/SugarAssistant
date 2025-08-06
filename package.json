@@ -17,7 +17,7 @@
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios",
     "update": "eas update",
-    "update:production": "eas update --channel production",
+    "update:production": "eas update --branch production",
     "sync-env": "node scripts/sync-env-to-eas.js"
   },
   "dependencies": {

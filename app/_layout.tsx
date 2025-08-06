@@ -2,9 +2,9 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -20,6 +20,7 @@ export default function RootLayout() {
     async function checkForUpdates() {
       try {
         if (Updates.isEnabled) {
+          Alert.alert('更新检查', '正在检查更新...');
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
             await Updates.fetchUpdateAsync();
