@@ -1,21 +1,20 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { getChatSessions, deleteChatSession, clearAllChatData, ChatSession } from '@/utils/chatStorage';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
-import React, { useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  SafeAreaView,
-  StatusBar,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from 'react-native';
+import { ChatSession, clearAllChatData, deleteChatSession, getChatSessions, getCurrentChatSession } from '@/utils/chatStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { getCurrentChatSession } from '@/utils/chatStorage';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 export default function SessionsScreen() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -158,6 +157,9 @@ export default function SessionsScreen() {
       <ThemedView style={styles.container}>
         {/* 顶部标题栏 */}
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          </TouchableOpacity>
           <ThemedText style={styles.title}>聊天会话</ThemedText>
           <TouchableOpacity onPress={handleClearAllSessions} style={styles.clearAllButton}>
             <ThemedText style={styles.clearAllButtonText}>清除全部</ThemedText>
@@ -202,7 +204,6 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -215,6 +216,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#000',
+    flex: 1,
+    textAlign: 'center',
   },
   clearAllButton: {
     paddingHorizontal: 12,
@@ -287,6 +290,9 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   deleteButton: {
+    padding: 8,
+  },
+  backButton: {
     padding: 8,
   },
 }); 
