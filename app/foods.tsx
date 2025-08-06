@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Platform,
     SafeAreaView,
@@ -14,7 +15,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 
 interface FoodItem {
@@ -82,6 +83,23 @@ export default function FoodsScreen() {
     );
   };
 
+  const showInfoDialog = () => {
+    Alert.alert(
+      '数据说明',
+      `含糖量：指每100克食物中糖分的含量（克）。数据来源于USDA营养数据库、中国食物成分表等权威营养数据库。
+
+升糖指数(GI)：反映食物升高血糖的速度和能力。
+• ≤55：低升糖
+• 56-70：中升糖
+• >70：高升糖
+
+数据来源：悉尼大学GI数据库、国际GI表(2021)、USDA营养数据库、中国食物成分表等。`,
+      [
+        { text: '知道了', style: 'default' }
+      ]
+    );
+  };
+
   const renderCategoryButton = ({ item }: { item: string }) => (
     <TouchableOpacity
       style={[
@@ -114,7 +132,9 @@ export default function FoodsScreen() {
               <Ionicons name="arrow-back" size={24} color="#007AFF" />
             </TouchableOpacity>
             <ThemedText style={styles.title}>食物库</ThemedText>
-            <View style={styles.placeholder} />
+            <TouchableOpacity onPress={showInfoDialog} style={styles.infoButton}>
+              <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
+            </TouchableOpacity>
           </View>
 
           {/* 分类筛选 */}
@@ -129,11 +149,13 @@ export default function FoodsScreen() {
             />
           </View>
 
+
+
           {/* 图例说明 */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
               <View style={[styles.legendColor, { backgroundColor: '#4CAF50' }]} />
-              <Text style={styles.legendText}>低升糖 (&le;55)</Text>
+              <Text style={styles.legendText}>低升糖 (≤55)</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendColor, { backgroundColor: '#FF9800' }]} />
@@ -141,7 +163,7 @@ export default function FoodsScreen() {
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendColor, { backgroundColor: '#F44336' }]} />
-              <Text style={styles.legendText}>高升糖 (&gt;70)</Text>
+              <Text style={styles.legendText}>高升糖 ({'>'}70)</Text>
             </View>
           </View>
 
@@ -180,6 +202,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
   },
   backButton: {
+    padding: 8,
+  },
+  infoButton: {
     padding: 8,
   },
   title: {
@@ -292,4 +317,5 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
   },
+
 }); 
