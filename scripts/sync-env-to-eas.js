@@ -62,22 +62,27 @@ let errorCount = 0;
 
 Object.entries(envVars).forEach(([key, value]) => {
   try {
-    // 检查secret是否已存在
-    try {
-      execSync(`eas secret:view --scope project --name ${key}`, { stdio: 'pipe' });
-      console.log(`   🔄 更新 ${key}...`);
-      // 删除旧的secret
-      execSync(`eas secret:delete --scope project --name ${key}`, { stdio: 'pipe' });
-    } catch (error) {
-      console.log(`   ➕ 创建 ${key}...`);
-    }
+    console.log(`   🔄 处理 ${key}...`);
+    console.log(`   📝 值: ${value.substring(0, 20)}${value.length > 20 ? '...' : ''}`);
     
-    // 创建新的secret
-    execSync(`eas secret:create --scope project --name ${key} --value "${value}"`, { stdio: 'pipe' });
-    console.log(`   ✅ ${key} 同步成功`);
-    successCount++;
+    try {
+      // 直接传递值，不使用文件
+      const command = `eas secret:create --scope project --name ${key} --type string --value "${value}" --force --non-interactive`;
+      console.log(`   🚀 执行命令: ${command.replace(value, value.substring(0, 10) + '...')}`);
+      
+      execSync(command, { 
+        stdio: 'pipe',
+        cwd: path.join(__dirname, '..')
+      });
+      
+      console.log(`   ✅ ${key} 同步成功`);
+      successCount++;
+    } catch (createError) {
+      console.log(`   ❌ ${key} 同步失败: ${createError.message}`);
+      errorCount++;
+    }
   } catch (error) {
-    console.log(`   ❌ ${key} 同步失败: ${error.message}`);
+    console.log(`   ❌ ${key} 处理失败: ${error.message}`);
     errorCount++;
   }
 });

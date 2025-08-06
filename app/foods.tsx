@@ -1,18 +1,20 @@
 import CustomTransition from '@/components/CustomTransition';
-import AdvancedTransition from '@/components/AdvancedTransition';
+import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import foodsJson from '@/data/foods.json';
+import { getStatusBarHeight } from '@/utils/androidSafeArea';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface FoodItem {
@@ -106,6 +108,15 @@ export default function FoodsScreen() {
           translucent={Platform.OS === 'android'}
         />
         <ThemedView style={styles.container}>
+          {/* 顶部导航栏 */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#007AFF" />
+            </TouchableOpacity>
+            <ThemedText style={styles.title}>食物库</ThemedText>
+            <View style={styles.placeholder} />
+          </View>
+
           {/* 分类筛选 */}
           <View style={styles.categoryContainer}>
             <FlatList
@@ -156,6 +167,28 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
+  },
+  backButton: {
+    padding: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  placeholder: {
+    width: 40,
   },
   categoryContainer: {
     backgroundColor: '#ffffff',
