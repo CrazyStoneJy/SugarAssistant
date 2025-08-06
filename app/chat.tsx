@@ -38,6 +38,7 @@ export default function ChatScreen() {
   const [isAPIAvailable, setIsAPIAvailable] = useState(true);
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const flatListRef = useRef<FlatList>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -52,6 +53,15 @@ export default function ChatScreen() {
 
   useEffect(() => {
     initializeChat();
+  }, []);
+
+  // 更新时间显示
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   // 监听键盘事件
@@ -404,11 +414,21 @@ export default function ChatScreen() {
               {getTitleName()}
             </ThemedText>
             <View style={styles.statusButtons}>
+              <ThemedText style={styles.timeText}>
+                {currentTime.toLocaleTimeString('zh-CN', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+              </ThemedText>
               <TouchableOpacity onPress={() => router.push('/foods')} style={styles.foodsButton}>
                 <Ionicons name="restaurant-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
                 <Ionicons name="list-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/version')} style={styles.versionButton}>
+                <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
               {/* <TouchableOpacity onPress={() => router.push('/transition-demo')} style={styles.demoButton}>
                 <Ionicons name="play-outline" size={20} color="#007AFF" />
@@ -486,6 +506,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  timeText: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 8,
+  },
   scrollButton: {
     padding: 8,
   },
@@ -493,6 +518,9 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   sessionsButton: {
+    padding: 8,
+  },
+  versionButton: {
     padding: 8,
   },
   demoButton: {

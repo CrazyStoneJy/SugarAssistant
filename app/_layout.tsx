@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -20,15 +20,21 @@ export default function RootLayout() {
     async function checkForUpdates() {
       try {
         if (Updates.isEnabled) {
-          Alert.alert('更新检查', '正在检查更新...');
+          console.log('🔍 检查更新中...');
           const update = await Updates.checkForUpdateAsync();
           if (update.isAvailable) {
+            console.log('📦 发现更新，正在下载...');
             await Updates.fetchUpdateAsync();
+            console.log('✅ 更新下载完成，正在重启应用...');
             await Updates.reloadAsync();
+          } else {
+            console.log('✅ 已是最新版本');
           }
+        } else {
+          console.log('⚠️ Updates 未启用');
         }
       } catch (error) {
-        console.log('更新检查失败:', error);
+        console.log('❌ 更新检查失败:', error);
       }
     }
 
@@ -79,6 +85,15 @@ export default function RootLayout() {
         />
         <Stack.Screen 
           name="food-detail" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            presentation: 'card',
+          }} 
+        />
+        <Stack.Screen 
+          name="version" 
           options={{ 
             headerShown: false,
             animation: 'slide_from_right',

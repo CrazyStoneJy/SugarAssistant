@@ -13,11 +13,13 @@
     "build:ios": "eas build --platform ios",
     "build:all": "eas build --platform all",
     "build:preview": "eas build --profile preview",
-    "build:production": "eas build --profile production",
+    "build:prod": "eas build --profile production",
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios",
     "update": "eas update",
-    "update:production": "eas update --branch production",
+    "update:prod": "eas update --branch production",
+    "update:prod:android": "eas update --branch production --platform android",
+    "update:prod:ios": "eas update --branch production --platform ios",
     "sync-env": "node scripts/sync-env-to-eas.js"
   },
   "dependencies": {
