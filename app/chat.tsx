@@ -13,9 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  AppState,
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -49,10 +47,6 @@ export default function ChatScreen() {
     useCallback(() => {
       // 每次页面获得焦点时重新加载聊天历史
       loadChatHistory();
-      
-      // 页面获得焦点时重置键盘高度
-      setKeyboardHeight(0);
-      console.log('页面获得焦点，重置键盘高度');
     }, [])
   );
 
@@ -69,43 +63,9 @@ export default function ChatScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  // 监听键盘事件 - 暂时禁用手动调整
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
-      console.log('键盘弹出，高度:', e.endCoordinates.height);
-      // 暂时不调整键盘高度，让系统自动处理
-      setKeyboardHeight(0);
-    });
+  // 移除键盘监听，让系统自动处理
 
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      console.log('键盘收起');
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      keyboardDidShowListener?.remove();
-      keyboardDidHideListener?.remove();
-    };
-  }, []);
-
-  // 监听应用状态变化
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active') {
-        console.log('应用返回前台，重置键盘状态');
-        setKeyboardHeight(0);
-      } else if (nextAppState === 'background') {
-        console.log('应用进入后台');
-        setKeyboardHeight(0);
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
+  // 移除应用状态监听，让系统自动处理
 
   const initializeChat = async () => {
     try {

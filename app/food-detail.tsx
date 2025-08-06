@@ -1,7 +1,6 @@
+import CustomTransition from '@/components/CustomTransition';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import CustomTransition from '@/components/CustomTransition';
-import AdvancedTransition from '@/components/AdvancedTransition';
 import foodDetailsJson from '@/data/food-details.json';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -204,6 +203,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+    paddingBottom: 100, // 为底部导航栏留出空间
   },
   foodHeader: {
     flexDirection: 'row',
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 60,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

@@ -174,7 +174,6 @@ const styles = StyleSheet.create({
   inputArea: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 12,
     paddingVertical: 8,
     minHeight: 44,
   },

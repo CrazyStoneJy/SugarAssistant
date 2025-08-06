@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
   },
   foodList: {
     padding: 16,
+    paddingBottom: 100, // 为底部导航栏留出空间
   },
   foodItem: {
     flex: 1,
