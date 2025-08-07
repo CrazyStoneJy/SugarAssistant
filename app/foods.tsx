@@ -72,6 +72,12 @@ export default function FoodsScreen() {
       return '#F44336'; // 红色 - 高升糖
     };
 
+    const getGlycemicLevel = (gi: number) => {
+      if (gi <= 55) return { level: '低升糖', color: '#4CAF50' };
+      if (gi <= 70) return { level: '中升糖', color: '#FF9800' };
+      return { level: '高升糖', color: '#F44336' };
+    };
+
     const getSugarLevel = (sugar: number) => {
       if (sugar <= 5) return { level: '低糖', color: '#4CAF50', suitable: '适合' };
       if (sugar <= 15) return { level: '中糖', color: '#FF9800', suitable: '谨慎' };
@@ -79,6 +85,7 @@ export default function FoodsScreen() {
     };
 
     const sugarLevel = getSugarLevel(item.sugarContent);
+    const glycemicLevel = getGlycemicLevel(item.glycemicIndex);
 
     return (
       <TouchableOpacity 
@@ -92,12 +99,21 @@ export default function FoodsScreen() {
           {item.name}
         </Text>
         <View style={styles.foodInfo}>
-          <Text style={[styles.sugarLevelText, { color: sugarLevel.color }]}>
-            {sugarLevel.level}
-          </Text>
-          <Text style={[styles.suitableText, { color: sugarLevel.color }]}>
-            {sugarLevel.suitable}
-          </Text>
+          {/* 升糖指数显示 */}
+          <View style={styles.giContainer}>
+            <Text style={[styles.giLevel, { color: glycemicLevel.color }]}>
+              {glycemicLevel.level}
+            </Text>
+          </View>
+          {/* 含糖量显示 */}
+          <View style={styles.sugarContainer}>
+            <Text style={[styles.sugarLevelText, { color: sugarLevel.color }]}>
+              {sugarLevel.level}
+            </Text>
+            <Text style={[styles.suitableText, { color: sugarLevel.color }]}>
+              {sugarLevel.suitable}
+            </Text>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -114,9 +130,9 @@ export default function FoodsScreen() {
 • >15g：高糖 - 避免食用
 
 升糖指数(GI)：反映食物升高血糖的速度和能力。
-• ≤55：低升糖
-• 56-70：中升糖
-• >70：高升糖
+• ≤55：低升糖 - 适合糖尿病人群
+• 56-70：中升糖 - 谨慎食用
+• >70：高升糖 - 避免食用
 
 数据来源：悉尼大学GI数据库、国际GI表(2021)、USDA营养数据库、中国食物成分表等。`,
       [
@@ -363,7 +379,7 @@ const styles = StyleSheet.create({
   },
   categoryButton: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     marginRight: 12,
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
@@ -381,22 +397,19 @@ const styles = StyleSheet.create({
   },
   sortContainer: {
     backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   sortTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    color: '#666',
     marginBottom: 8,
   },
   sortTabs: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingVertical: 4,
+    gap: 12,
   },
   tabContainer: {
     position: 'relative',
@@ -407,7 +420,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   sortTabActive: {
     backgroundColor: '#007AFF',
@@ -463,10 +476,10 @@ const styles = StyleSheet.create({
   },
   foodItem: {
     flex: 1,
-    margin: 4,
+    margin: 6,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -476,6 +489,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    minHeight: 140,
   },
   foodImageContainer: {
     width: 50,
@@ -484,7 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   foodImage: {
     fontSize: 24,
@@ -494,20 +508,41 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
     lineHeight: 16,
   },
   foodInfo: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  giContainer: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  giLabel: {
+    fontSize: 10,
+    color: '#666',
+    marginRight: 2,
+  },
+  giValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 2,
+  },
+  giLevel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  sugarContainer: {
     alignItems: 'center',
   },
   sugarLevelText: {
     fontSize: 9,
     fontWeight: '600',
-    marginTop: 2,
+    marginBottom: 2,
   },
   suitableText: {
     fontSize: 8,
-    marginTop: 1,
   },
   sortDirectionIcon: {
     marginLeft: 2,
