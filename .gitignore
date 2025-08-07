@@ -38,3 +38,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Test files with sensitive data
+utils/test.json
