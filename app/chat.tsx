@@ -204,6 +204,9 @@ export default function ChatScreen() {
       // 获取当前会话的OCR数据
       const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
       const ocrData = await getCurrentSessionOcrData();
+      
+      // 将OCR数据转换为字符串数组
+      const ocrTexts = ocrData.map(item => item.text);
 
       // 生成AI回复
       let aiResponseText: string;
@@ -211,7 +214,7 @@ export default function ChatScreen() {
       if (isAPIAvailable && isAPIInitialized()) {
         // 使用DeepSeek API
         console.log('🤖 使用DeepSeek API生成回复...');
-        console.log('📄 当前会话OCR数据:', ocrData);
+        console.log('📄 当前会话OCR数据:', ocrTexts);
         
         // 构建对话历史 - 只使用最后10条消息
         const conversationHistory = messages
@@ -295,7 +298,7 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            ocrData
+            ocrTexts
           );
         } catch (error) {
           console.error('DeepSeek API调用失败:', error);
@@ -319,10 +322,10 @@ export default function ChatScreen() {
       } else {
         // 使用本地AI回复
         console.log('🤖 使用本地AI生成回复...');
-        console.log('📄 当前会话OCR数据:', ocrData);
+        console.log('📄 当前会话OCR数据:', ocrTexts);
         
         // 使用包含OCR数据的AI回复函数
-        aiResponseText = generateAIResponseWithOcrData(text.trim(), ocrData);
+        aiResponseText = generateAIResponseWithOcrData(text.trim(), ocrTexts);
         
         // 添加AI回复消息
         const aiMessage: Message = {
@@ -422,21 +425,107 @@ export default function ChatScreen() {
         const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
         const ocrData = await getCurrentSessionOcrData();
         
-        // 使用包含OCR数据的AI回复函数
-        const aiResponseText = generateAIResponseWithOcrData(recognizedText, ocrData);
+        // 将OCR数据转换为字符串数组
+        const ocrTexts = ocrData.map(item => item.text);
         
-        // 添加AI回复消息
-        const aiMessage: Message = {
-          id: generateUniqueMessageId(),
-          text: `我识别到图片中的文字是：\n\n"${recognizedText}"\n\n${aiResponseText}`,
+        // 构建对话历史 - 只使用最后10条消息
+        const conversationHistory = messages
+          .slice(-10) // 只取最后10条消息
+          .map(msg => ({
+            role: msg.isUser ? 'user' as const : 'assistant' as const,
+            content: msg.text,
+          }));
+        
+        // 立即添加AI思考消息
+        const thinkingMessage: Message = {
+          id: generateUniqueMessageId('thinking'),
+          text: '',
           isUser: false,
           timestamp: new Date(),
         };
         
-        setMessages(prev => [...prev, aiMessage]);
-        addMessageToCurrentSession(aiMessage);
+        setMessages(prev => [...prev, thinkingMessage]);
         
-        console.log('✅ AI回复已生成');
+        try {
+          // 使用DeepSeek API分析OCR数据
+          let fullResponse = '';
+          
+          await sendMessageToDeepSeekStream(
+            `我上传了一张图片，OCR识别到的文字内容是：\n\n"${recognizedText}"\n\n请分析这些文字内容，并提供有用的见解和建议。`,
+            conversationHistory,
+            (chunk: string) => {
+              // 收到每个文本块时更新消息
+              fullResponse += chunk;
+              
+              // 更新状态
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: fullResponse }
+                  : msg
+              ));
+            },
+            (completeResponse: string) => {
+              // 流式传输完成
+              console.log('✅ DeepSeek API分析OCR数据完成');
+              
+              // 最终更新消息
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: completeResponse }
+                  : msg
+              ));
+              
+              // 保存完整的AI回复到存储
+              const aiMessage: Message = {
+                id: thinkingMessage.id,
+                text: completeResponse,
+                isUser: false,
+                timestamp: thinkingMessage.timestamp,
+              };
+              addMessageToCurrentSession(aiMessage);
+            },
+            (error: Error) => {
+              console.error('DeepSeek API分析OCR数据失败:', error);
+              
+              // 更新思考消息为错误信息
+              setMessages(prev => prev.map(msg => 
+                msg.id === thinkingMessage.id 
+                  ? { ...msg, text: `分析OCR数据失败：${error.message}` }
+                  : msg
+              ));
+              
+              // 保存错误消息到存储
+              const errorMessage: Message = {
+                id: thinkingMessage.id,
+                text: `分析OCR数据失败：${error.message}`,
+                isUser: false,
+                timestamp: thinkingMessage.timestamp,
+              };
+              addMessageToCurrentSession(errorMessage);
+            },
+            ocrTexts
+          );
+        } catch (error) {
+          console.error('DeepSeek API调用失败:', error);
+          
+          // 更新思考消息为错误信息
+          setMessages(prev => prev.map(msg => 
+            msg.id === thinkingMessage.id 
+              ? { ...msg, text: `分析OCR数据失败：${error instanceof Error ? error.message : '未知错误'}` }
+              : msg
+          ));
+          
+          // 保存错误消息到存储
+          const errorMessage: Message = {
+            id: thinkingMessage.id,
+            text: `分析OCR数据失败：${error instanceof Error ? error.message : '未知错误'}`,
+            isUser: false,
+            timestamp: thinkingMessage.timestamp,
+          };
+          addMessageToCurrentSession(errorMessage);
+        }
+        
+        console.log('✅ AI分析OCR数据完成');
       } else {
         // 如果没有识别到文字，给出提示
         const aiMessage: Message = {
