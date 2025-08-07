@@ -79,7 +79,7 @@ export async function checkAudioQuality(audioUri: string): Promise<AudioQualityI
     let quality: 'excellent' | 'good' | 'fair' | 'poor' = 'good';
     
     // 检查文件大小 - 针对PCM格式优化
-    if (fileSize < 300) { // 小于300字节 - PCM格式更宽松的标准
+    if (fileSize < 1024) { // 小于1KB - 统一标准
       issues.push('文件太小，可能录音时间过短');
       quality = 'poor';
     } else if (fileSize > 100 * 1024 * 1024) { // 大于100MB
@@ -87,12 +87,12 @@ export async function checkAudioQuality(audioUri: string): Promise<AudioQualityI
       quality = 'poor';
     }
     
-    // 检查录音时长 - 针对PCM格式优化
-    if (duration < 0.2) { // 小于0.2秒 - PCM格式更宽松的标准
-      issues.push(`录音时间过短 (${Math.round(duration * 100) / 100}秒)，建议至少0.3秒`);
+    // 检查录音时长 - 统一标准：1-30秒
+    if (duration < 1) { // 小于1秒 - 统一标准
+      issues.push(`录音时间过短 (${Math.round(duration * 100) / 100}秒)，建议至少1秒`);
       quality = 'poor';
-    } else if (duration > 300) { // 大于5分钟
-      issues.push(`录音时间过长 (${Math.round(duration * 100) / 100}秒)，建议不超过5分钟`);
+    } else if (duration > 30) { // 大于30秒 - 统一标准
+      issues.push(`录音时间过长 (${Math.round(duration * 100) / 100}秒)，建议不超过30秒`);
       quality = 'fair';
     }
     
@@ -133,16 +133,16 @@ export function getAudioQualitySuggestions(info: AudioQualityInfo): string[] {
     suggestions.push('✅ 音频质量良好，适合语音识别');
   }
   
-  // 添加具体建议 - 针对PCM格式优化
-  if (info.duration < 0.2) {
-    suggestions.push('💡 建议录音时间至少0.2秒');
+  // 添加具体建议 - 统一标准：1-30秒
+  if (info.duration < 1) {
+    suggestions.push('💡 建议录音时间至少1秒');
   }
   
-  if (info.duration > 60) {
-    suggestions.push('💡 建议录音时间不超过60秒');
+  if (info.duration > 30) {
+    suggestions.push('💡 建议录音时间不超过30秒');
   }
   
-  if (info.fileSize < 300) {
+  if (info.fileSize < 1024) {
     suggestions.push('💡 PCM录音文件较小，请确保录到了声音');
   }
   

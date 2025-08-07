@@ -3,11 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface ChatMessage {
   id: string;
   text: string;
+  imageUri?: string;
+  ocrData?: {
+    recognizedText: string;
+    timestamp: Date;
+  };
   isUser: boolean;
   timestamp: Date;
 }
 
-interface ChatSession {
+export interface ChatSession {
   id: string;
   messages: ChatMessage[];
   createdAt: Date;
@@ -16,6 +21,25 @@ interface ChatSession {
 
 const CHAT_SESSIONS_KEY = 'sugar_assistant_chat_sessions';
 const CURRENT_SESSION_KEY = 'sugar_assistant_current_session';
+
+// 全局计数器，确保ID唯一性
+let sessionIdCounter = 0;
+
+// 生成唯一会话ID的函数
+const generateUniqueSessionId = () => {
+  sessionIdCounter++;
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `session_${timestamp}_${sessionIdCounter}_${random}`;
+};
+
+// 生成唯一消息ID的函数
+const generateUniqueMessageId = (prefix: string = 'msg') => {
+  sessionIdCounter++;
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${prefix}_${timestamp}_${sessionIdCounter}_${random}`;
+};
 
 /**
  * 保存聊天会话
@@ -57,6 +81,10 @@ export async function getChatSessions(): Promise<ChatSession[]> {
         messages: session.messages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
+          ocrData: msg.ocrData ? {
+            ...msg.ocrData,
+            timestamp: new Date(msg.ocrData.timestamp),
+          } : undefined,
         })),
       }));
     }
@@ -82,6 +110,10 @@ export async function getCurrentChatSession(): Promise<ChatSession | null> {
         messages: session.messages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
+          ocrData: msg.ocrData ? {
+            ...msg.ocrData,
+            timestamp: new Date(msg.ocrData.timestamp),
+          } : undefined,
         })),
       };
     }
@@ -96,14 +128,14 @@ export async function getCurrentChatSession(): Promise<ChatSession | null> {
  * 创建新的聊天会话
  */
 export function createNewChatSession(): ChatSession {
-  const sessionId = `session_${Date.now()}`;
+  const sessionId = generateUniqueSessionId();
   const now = new Date();
   
   return {
     id: sessionId,
     messages: [
       {
-        id: '1',
+        id: generateUniqueMessageId('welcome'),
         text: "我是一位专业的营养师，专精于血糖控制、低升糖饮食、代谢综合征管理。",
         isUser: false,
         timestamp: now,
@@ -194,5 +226,56 @@ export async function getChatStorageSize(): Promise<number> {
   } catch (error) {
     console.error('获取存储大小失败:', error);
     return 0;
+  }
+} 
+
+/**
+ * 获取当前会话的所有OCR识别数据
+ */
+export async function getCurrentSessionOcrData(): Promise<Array<{text: string, timestamp: Date}>> {
+  try {
+    const currentSession = await getCurrentChatSession();
+    if (!currentSession) {
+      return [];
+    }
+    
+    // 提取所有OCR识别数据，包含时间戳
+    const ocrData = currentSession.messages
+      .filter(msg => msg.ocrData && msg.ocrData.recognizedText)
+      .map(msg => ({
+        text: msg.ocrData!.recognizedText,
+        timestamp: msg.ocrData!.timestamp
+      }));
+    
+    return ocrData;
+  } catch (error) {
+    console.error('获取OCR数据失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取所有会话的OCR识别数据
+ */
+export async function getAllSessionsOcrData(): Promise<Array<{text: string, timestamp: Date}>> {
+  try {
+    const sessions = await getChatSessions();
+    const allOcrData: Array<{text: string, timestamp: Date}> = [];
+    
+    sessions.forEach(session => {
+      session.messages
+        .filter(msg => msg.ocrData && msg.ocrData.recognizedText)
+        .forEach(msg => {
+          allOcrData.push({
+            text: msg.ocrData!.recognizedText,
+            timestamp: msg.ocrData!.timestamp
+          });
+        });
+    });
+    
+    return allOcrData;
+  } catch (error) {
+    console.error('获取所有OCR数据失败:', error);
+    return [];
   }
 } 

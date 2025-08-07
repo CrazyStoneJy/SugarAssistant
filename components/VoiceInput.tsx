@@ -29,6 +29,8 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [baiduDiagnosis, setBaiduDiagnosis] = useState<any>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0); // 录音时长（秒）
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null); // 录音开始时间
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
 
   useEffect(() => {
@@ -93,6 +95,32 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
       pulseAnim.setValue(1);
     }
   }, [isRecording, pulseAnim]);
+
+  // 录音计时器
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    
+    if (isRecording && recordingStartTime) {
+      interval = setInterval(() => {
+        const currentTime = Date.now();
+        const duration = Math.floor((currentTime - recordingStartTime) / 1000);
+        setRecordingDuration(duration);
+        
+        // 如果录音时间超过30秒，自动停止录音
+        if (duration >= 30) {
+          stopRecording();
+        }
+      }, 1000);
+    } else {
+      setRecordingDuration(0);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isRecording, recordingStartTime]);
 
   // 播放录音
   const playRecording = async () => {
@@ -178,7 +206,7 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
           { text: '去设置', onPress: () => {
             // 在iOS上可以打开设置
             if (Platform.OS === 'ios') {
-              // 这里可以添加打开设置的逻辑
+    
             }
           }}
         ]
@@ -189,6 +217,9 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
     try {
       setError(null);
       setDiagnosis(null);
+      setRecordingDuration(0); // 重置录音时长
+      setRecordingStartTime(Date.now()); // 设置录音开始时间
+      
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -227,6 +258,7 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
       console.error('❌ 录音失败:', err);
       setError('录音失败，请重试');
       Alert.alert('录音失败', '无法开始录音，请检查麦克风权限');
+      setRecordingStartTime(null); // 重置录音开始时间
     }
   };
 
@@ -235,6 +267,9 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
 
     setIsRecording(false);
     setIsProcessing(true);
+    
+    // 重置录音时间
+    setRecordingStartTime(null);
     
     try {
       console.log('🛑 停止录音...');
@@ -365,6 +400,13 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
     return issues.length > 0 ? issues.join(' | ') : '诊断正常';
   };
 
+  // 格式化录音时长显示
+  const formatRecordingDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <Pressable
       style={[styles.container, disabled && styles.disabled]}
@@ -385,6 +427,14 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
           color="#FFFFFF"
         />
       </Animated.View>
+      
+      {/* 录音时长显示 */}
+      {isRecording && recordingDuration > 0 && (
+        <ThemedText style={styles.durationText}>
+          {formatRecordingDuration(recordingDuration)}
+        </ThemedText>
+      )}
+      
       <ThemedText style={styles.buttonText}>{getButtonText()}</ThemedText>
       {speechStatus && (
         <ThemedText style={styles.statusText}>{getStatusText()}</ThemedText>
@@ -483,6 +533,14 @@ const styles = StyleSheet.create({
     color: '#FF9500',
     textAlign: 'center',
     marginTop: 2,
+  },
+  durationText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 4,
   },
   playButton: {
     flexDirection: 'row',

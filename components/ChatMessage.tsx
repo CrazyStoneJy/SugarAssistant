@@ -7,6 +7,7 @@ import MarkdownText from './MarkdownText';
 import { ThemedText } from './ThemedText';
 
 interface ChatMessageProps {
+  index: number;
   text: string;
   imageUri?: string; // 添加图片URI支持
   isUser: boolean;
@@ -15,7 +16,7 @@ interface ChatMessageProps {
   onSpeak?: (text: string) => void;
 }
 
-export default function ChatMessage({ text, imageUri, isUser, timestamp, isThinking = false, onSpeak }: ChatMessageProps) {
+export default function ChatMessage({ index, text, imageUri, isUser, timestamp, isThinking = false, onSpeak }: ChatMessageProps) {
   const [showImageViewer, setShowImageViewer] = useState(false);
 
   const handleSpeak = () => {
@@ -56,11 +57,11 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
     const seconds = messageDate.getSeconds().toString().padStart(2, '0');
     
     // 调试信息
-    console.log('时间判断调试:', {
-      messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
-      nowDate: `${nowYear}-${nowMonth}-${nowDay}`,
-      isToday: messageYear === nowYear && messageMonth === nowMonth && messageDay === nowDay
-    });
+    // console.log('时间判断调试:', {
+    //   messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
+    //   nowDate: `${nowYear}-${nowMonth}-${nowDay}`,
+    //   isToday: messageYear === nowYear && messageMonth === nowMonth && messageDay === nowDay
+    // });
     
     // 判断是否是今天
     if (messageYear === nowYear && messageMonth === nowMonth && messageDay === nowDay) {
@@ -73,11 +74,11 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
     const yesterdayMonth = yesterday.getMonth() + 1;
     const yesterdayDay = yesterday.getDate();
     
-    console.log('昨天判断调试:', {
-      messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
-      yesterdayDate: `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`,
-      isYesterday: messageYear === yesterdayYear && messageMonth === yesterdayMonth && messageDay === yesterdayDay
-    });
+    // console.log('昨天判断调试:', {
+    //   messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
+    //   yesterdayDate: `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`,
+    //   isYesterday: messageYear === yesterdayYear && messageMonth === yesterdayMonth && messageDay === yesterdayDay
+    // });
     
     if (messageYear === yesterdayYear && messageMonth === yesterdayMonth && messageDay === yesterdayDay) {
       return `昨天 ${hours}时${minutes}分${seconds}秒`;
@@ -91,7 +92,7 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
 
   return (
     <>
-      <View style={[styles.container, isUser ? styles.userContainer : styles.aiContainer]}>
+      <View key={`message_${index}_${timestamp.getTime()}`} style={[styles.container, isUser ? styles.userContainer : styles.aiContainer]} >
         {/* 用户消息布局 */}
         {isUser ? (
           <View style={styles.userMessageLayout}>
@@ -149,7 +150,7 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
 
       {/* 图片查看器Modal */}
       {imageUri && (
-        <Modal visible={showImageViewer} transparent={true}>
+        <Modal visible={showImageViewer} transparent={true} key={`modal_${index}_${timestamp.getTime()}`}>
           <ImageViewer
             imageUrls={[{ url: imageUri }]}
             index={0}

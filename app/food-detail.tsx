@@ -151,7 +151,7 @@ export default function FoodDetailScreen() {
             <View style={styles.benefitsSection}>
               <ThemedText style={styles.sectionTitle}>健康益处</ThemedText>
               {food.benefits.map((benefit, index) => (
-                <View key={index} style={styles.benefitItem}>
+                <View key={`benefit_${index}_${benefit.substring(0, 10)}`} style={styles.benefitItem}>
                   <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
                   <ThemedText style={styles.benefitText}>{benefit}</ThemedText>
                 </View>
@@ -162,7 +162,7 @@ export default function FoodDetailScreen() {
             <View style={styles.warningsSection}>
               <ThemedText style={styles.sectionTitle}>注意事项</ThemedText>
               {food.warnings.map((warning, index) => (
-                <View key={index} style={styles.warningItem}>
+                <View key={`warning_${index}_${warning.substring(0, 10)}`} style={styles.warningItem}>
                   <Ionicons name="warning" size={16} color="#FF9800" />
                   <ThemedText style={styles.warningText}>{warning}</ThemedText>
                 </View>

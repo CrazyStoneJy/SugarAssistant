@@ -341,11 +341,12 @@ export function autoInitAPI(): boolean {
 }
 
 /**
- * 发送消息到DeepSeek API（非流式）
+ * 发送消息到DeepSeek API（非流式，包含OCR数据）
  */
 export async function sendMessageToDeepSeek(
   userMessage: string,
-  conversationHistory: DeepSeekMessage[] = []
+  conversationHistory: DeepSeekMessage[] = [],
+  ocrData: string[] = []
 ): Promise<string> {
   if (!deepseekAPI) {
     // 尝试自动初始化
@@ -359,14 +360,25 @@ export async function sendMessageToDeepSeek(
   }
 
   try {
+    // 构建包含OCR数据的system prompt
+    let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+    
+    if (ocrData.length > 0) {
+      const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
+      systemPrompt += ocrContext;
+    }
+
+    console.log("systemPrompt", systemPrompt);
+
     // 构建消息历史
     const messages: DeepSeekMessage[] = [
-      deepseekAPI!.createSystemMessage(DEFAULT_SYSTEM_PROMPT),
+      deepseekAPI!.createSystemMessage(systemPrompt),
       ...conversationHistory,
       deepseekAPI!.createUserMessage(userMessage),
     ];
 
     console.log("history messages", messages);
+    console.log("OCR data included:", ocrData.length > 0 ? ocrData : "无");
 
     // 调用API
     const response = await deepseekAPI!.chat(messages, {
@@ -384,14 +396,15 @@ export async function sendMessageToDeepSeek(
 }
 
 /**
- * 流式发送消息到DeepSeek API
+ * 流式发送消息到DeepSeek API（包含OCR数据）
  */
 export async function sendMessageToDeepSeekStream(
   userMessage: string,
   conversationHistory: DeepSeekMessage[] = [],
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string) => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  ocrData: string[] = []
 ): Promise<void> {
   if (!deepseekAPI) {
     // 尝试自动初始化
@@ -405,14 +418,23 @@ export async function sendMessageToDeepSeekStream(
   }
 
   try {
+    // 构建包含OCR数据的system prompt
+    let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+    
+    if (ocrData.length > 0) {
+      const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
+      systemPrompt += ocrContext;
+    }
+
     // 构建消息历史
     const messages: DeepSeekMessage[] = [
-      deepseekAPI!.createSystemMessage(DEFAULT_SYSTEM_PROMPT),
+      deepseekAPI!.createSystemMessage(systemPrompt),
       ...conversationHistory,
       deepseekAPI!.createUserMessage(userMessage),
     ];
 
     console.log("stream history messages length", messages.length);
+    console.log("OCR data included:", ocrData.length > 0 ? ocrData : "无");
 
     // 调用流式API
     await deepseekAPI!.chatStream(
@@ -446,6 +468,24 @@ export function getAPIStatus(): {
     model: deepseekAPI?.getConfig()?.model,
     config: deepseekAPI?.getConfig(),
   };
+}
+
+/**
+ * 创建包含OCR数据的system message
+ */
+export function createSystemMessageWithOcrData(ocrData: string[] = []): DeepSeekMessage {
+  if (!deepseekAPI) {
+    throw new Error('DeepSeek API未初始化');
+  }
+
+  let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+  
+  if (ocrData.length > 0) {
+    const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
+    systemPrompt += ocrContext;
+  }
+
+  return deepseekAPI.createSystemMessage(systemPrompt);
 }
 
 export type { DeepSeekMessage, DeepSeekRequest, DeepSeekResponse, DeepSeekStreamResponse };

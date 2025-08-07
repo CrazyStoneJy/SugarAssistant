@@ -82,16 +82,16 @@ export async function diagnoseSpeechRecognition(audioUri: string): Promise<{
     
     if (!fileInfo.exists) {
       diagnosis.audioRecording.issues.push('音频文件不存在');
-    } else if (fileSize < 300) { // 小于300字节 - PCM格式更宽松的标准
+    } else if (fileSize < 1024) { // 小于1KB - 统一标准
       diagnosis.audioRecording.issues.push('音频文件太小，可能录音时间过短');
     } else if (fileSize > 100 * 1024 * 1024) {
       diagnosis.audioRecording.issues.push('音频文件太大，可能录音时间过长');
     }
     
-    if (diagnosis.audioRecording.estimatedDuration < 0.2) { // 小于0.2秒 - PCM格式更宽松的标准
-      diagnosis.audioRecording.issues.push(`录音时间过短 (${Math.round(diagnosis.audioRecording.estimatedDuration * 100) / 100}秒)，建议至少0.2秒`);
-    } else if (diagnosis.audioRecording.estimatedDuration > 300) {
-      diagnosis.audioRecording.issues.push(`录音时间过长 (${Math.round(diagnosis.audioRecording.estimatedDuration * 100) / 100}秒)，建议不超过5分钟`);
+    if (diagnosis.audioRecording.estimatedDuration < 1) { // 小于1秒 - 统一标准
+      diagnosis.audioRecording.issues.push(`录音时间过短 (${Math.round(diagnosis.audioRecording.estimatedDuration * 100) / 100}秒)，建议至少1秒`);
+    } else if (diagnosis.audioRecording.estimatedDuration > 30) {
+      diagnosis.audioRecording.issues.push(`录音时间过长 (${Math.round(diagnosis.audioRecording.estimatedDuration * 100) / 100}秒)，建议不超过30秒`);
     }
     
     console.log('📁 音频录制诊断结果:', diagnosis.audioRecording);

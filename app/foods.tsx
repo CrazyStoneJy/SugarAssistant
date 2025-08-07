@@ -214,7 +214,7 @@ export default function FoodsScreen() {
             <FlatList
               data={categories}
               renderItem={renderCategoryButton}
-              keyExtractor={item => item}
+              keyExtractor={(item, index) => `category_${index}_${item}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.categoryList}

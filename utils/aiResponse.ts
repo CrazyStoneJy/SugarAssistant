@@ -99,3 +99,32 @@ export function generateSimpleAIResponse(userMessage: string): string {
   const randomResponse = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
   return randomResponse;
 } 
+
+/**
+ * 生成包含OCR数据的AI回复
+ */
+export function generateAIResponseWithOcrData(userMessage: string, ocrData: string[] = []): string {
+  const message = userMessage.toLowerCase();
+  
+  // 如果有OCR数据，优先处理OCR相关内容
+  if (ocrData.length > 0) {
+    const ocrContext = `根据之前识别的图片内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n`;
+    
+    // 检查是否是OCR相关的询问
+    if (message.includes('识别') || message.includes('图片') || message.includes('文字') || message.includes('内容')) {
+      return `${ocrContext}我已经识别了这些图片中的文字内容。你可以询问我关于这些内容的任何问题，我会基于识别到的文字为你提供帮助。`;
+    }
+    
+    // 对于其他问题，将OCR数据作为上下文
+    const responsesWithOcr = [
+      `基于之前识别的图片内容，我来回答你的问题：\n\n${ocrContext}${generateSimpleAIResponse(userMessage)}`,
+      `结合识别到的文字信息，我的建议是：\n\n${ocrContext}${generateSimpleAIResponse(userMessage)}`,
+      `根据图片中的内容，我认为：\n\n${ocrContext}${generateSimpleAIResponse(userMessage)}`,
+    ];
+    
+    return responsesWithOcr[Math.floor(Math.random() * responsesWithOcr.length)];
+  }
+  
+  // 如果没有OCR数据，使用默认回复
+  return generateSimpleAIResponse(userMessage);
+} 

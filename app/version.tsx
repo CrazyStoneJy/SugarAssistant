@@ -43,7 +43,7 @@ export default function VersionScreen() {
     isUpdateAvailable: false,
     lastUpdateCheck: null,
   });
-  const [diagnosis, setDiagnosis] = useState<any>(null);
+  const [diagnosis, setDiagnosis] = useState<string[]>([]);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function VersionScreen() {
         updateId,
         channel,
         isUpdateAvailable,
-        lastUpdateCheck: new Date().toLocaleString('zh-CN'),
+        lastUpdateCheck: new Date().toLocaleString('zh-CN', { hour12: false }),
       });
     } catch (error) {
       console.error('加载版本信息失败:', error);
@@ -132,33 +132,28 @@ export default function VersionScreen() {
           ]
         );
       } else {
-        Alert.alert('提示', '当前已是最新版本');
+        Alert.alert('检查完成', '当前已是最新版本');
       }
-
-      // 重新加载版本信息
-      loadVersionInfo();
     } catch (error) {
-      Alert.alert('错误', '检查更新失败');
+      Alert.alert('检查失败', '检查更新时出现错误');
     }
   };
 
   const getUpdateStatusText = () => {
     if (!Updates.isEnabled) return '未启用';
-    if (versionInfo.isUpdateAvailable) return '有可用更新';
-    return '已是最新版本';
+    return versionInfo.isUpdateAvailable ? '有更新可用' : '已是最新版本';
   };
 
   const getUpdateStatusColor = () => {
     if (!Updates.isEnabled) return '#999';
-    if (versionInfo.isUpdateAvailable) return '#FF9500';
-    return '#4CAF50';
+    return versionInfo.isUpdateAvailable ? '#007AFF' : '#4CAF50';
   };
 
   const runDiagnosis = async () => {
     setIsDiagnosing(true);
     try {
       const result = await diagnoseBaiduSpeechIssues();
-      setDiagnosis(result);
+      setDiagnosis(result.recommendations);
       
       const message = result.recommendations.join('\n');
       Alert.alert('百度语音API诊断结果', message);
@@ -314,9 +309,9 @@ export default function VersionScreen() {
           {diagnosis && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>诊断结果</ThemedText>
-              {diagnosis.recommendations.map((rec: string, index: number) => (
-                <ThemedText key={index} style={styles.diagnosisText}>
-                  {rec}
+              {diagnosis.map((item, index) => (
+                <ThemedText key={`diagnosis_${index}`} style={styles.diagnosisText}>
+                  • {item}
                 </ThemedText>
               ))}
             </View>

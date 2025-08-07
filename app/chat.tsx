@@ -3,7 +3,7 @@ import ChatMessage from '@/components/ChatMessage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
-import { generateSimpleAIResponse } from '@/utils/aiResponse';
+import { generateAIResponseWithOcrData } from '@/utils/aiResponse';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
 import { recognizeTextWithTencentOcr } from '@/utils/tencentOcrApi';
@@ -30,7 +30,58 @@ interface Message {
   imageUri?: string; // 添加图片URI支持
   isUser: boolean;
   timestamp: Date;
+  ocrData?: {
+    recognizedText: string;
+    timestamp: Date;
+  };
 }
+
+// 全局计数器，确保ID唯一性
+let messageIdCounter = 0;
+
+// 生成唯一消息ID的函数
+const generateUniqueMessageId = (prefix: string = 'msg') => {
+  messageIdCounter++;
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  const id = `${prefix}_${timestamp}_${messageIdCounter}_${random}`;
+  console.log(`🔑 生成消息ID: ${id}`);
+  return id;
+};
+
+// 检查并修复重复的消息ID
+const ensureUniqueMessageIds = (messages: Message[]): Message[] => {
+  const seenIds = new Set<string>();
+  const fixedMessages: Message[] = [];
+  let duplicateCount = 0;
+  
+  console.log(`🔍 检查 ${messages.length} 条消息的ID唯一性...`);
+  
+  messages.forEach((message, index) => {
+    let uniqueId = message.id;
+    
+    // 如果ID已经存在，生成新的ID
+    if (seenIds.has(uniqueId)) {
+      console.log(`⚠️ 发现重复的消息ID: ${uniqueId} (索引: ${index})，正在修复...`);
+      duplicateCount++;
+      uniqueId = generateUniqueMessageId(message.id.split('_')[0] || 'msg');
+    }
+    
+    seenIds.add(uniqueId);
+    fixedMessages.push({
+      ...message,
+      id: uniqueId,
+    });
+  });
+  
+  if (duplicateCount > 0) {
+    console.log(`🔧 修复了 ${duplicateCount} 个重复的消息ID`);
+  } else {
+    console.log(`✅ 所有消息ID都是唯一的`);
+  }
+  
+  return fixedMessages;
+};
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,7 +90,6 @@ export default function ChatScreen() {
   const [isAPIAvailable, setIsAPIAvailable] = useState(true);
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
@@ -54,15 +104,6 @@ export default function ChatScreen() {
 
   useEffect(() => {
     initializeChat();
-  }, []);
-
-  // 更新时间显示
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, []);
 
   // 移除键盘监听，让系统自动处理
@@ -82,7 +123,8 @@ export default function ChatScreen() {
       console.error('初始化聊天失败:', error);
       // 如果加载失败，创建新的会话
       const newSession = createNewChatSession();
-      setMessages(newSession.messages);
+      const fixedMessages = ensureUniqueMessageIds(newSession.messages);
+      setMessages(fixedMessages);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -92,17 +134,21 @@ export default function ChatScreen() {
     try {
       const currentSession = await getCurrentChatSession();
       if (currentSession && currentSession.messages.length > 0) {
-        setMessages(currentSession.messages);
+        // 检查并修复重复的消息ID
+        const fixedMessages = ensureUniqueMessageIds(currentSession.messages);
+        setMessages(fixedMessages);
       } else {
         // 如果没有历史消息，创建新的会话
         const newSession = createNewChatSession();
-        setMessages(newSession.messages);
+        const fixedMessages = ensureUniqueMessageIds(newSession.messages);
+        setMessages(fixedMessages);
       }
     } catch (error) {
       console.error('加载聊天历史失败:', error);
       // 如果加载失败，创建新的会话
       const newSession = createNewChatSession();
-      setMessages(newSession.messages);
+      const fixedMessages = ensureUniqueMessageIds(newSession.messages);
+      setMessages(fixedMessages);
     }
   };
 
@@ -139,7 +185,7 @@ export default function ChatScreen() {
     if (!text.trim() || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: generateUniqueMessageId(),
       text: text.trim(),
       isUser: true,
       timestamp: new Date(),
@@ -155,12 +201,17 @@ export default function ChatScreen() {
       // 保存用户消息到存储
       await addMessageToCurrentSession(userMessage);
 
+      // 获取当前会话的OCR数据
+      const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
+      const ocrData = await getCurrentSessionOcrData();
+
       // 生成AI回复
       let aiResponseText: string;
       
       if (isAPIAvailable && isAPIInitialized()) {
         // 使用DeepSeek API
         console.log('🤖 使用DeepSeek API生成回复...');
+        console.log('📄 当前会话OCR数据:', ocrData);
         
         // 构建对话历史 - 只使用最后10条消息
         const conversationHistory = messages
@@ -172,7 +223,7 @@ export default function ChatScreen() {
         
         // 立即添加AI思考消息
         const thinkingMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUniqueMessageId('thinking'),
           text: '',
           isUser: false,
           timestamp: new Date(),
@@ -231,60 +282,74 @@ export default function ChatScreen() {
               // 更新思考消息为错误信息
               setMessages(prev => prev.map(msg => 
                 msg.id === thinkingMessage.id 
-                  ? { ...msg, text: '抱歉，AI服务暂时不可用，请稍后重试。' }
+                  ? { ...msg, text: `API调用失败：${error.message}` }
                   : msg
               ));
               
+              // 保存错误消息到存储
               const errorMessage: Message = {
                 id: thinkingMessage.id,
-                text: '抱歉，AI服务暂时不可用，请稍后重试。',
+                text: `API调用失败：${error.message}`,
                 isUser: false,
                 timestamp: thinkingMessage.timestamp,
               };
               addMessageToCurrentSession(errorMessage);
-            }
+            },
+            ocrData
           );
-          
-          return; // 流式API会异步处理，直接返回
         } catch (error) {
           console.error('DeepSeek API调用失败:', error);
-          aiResponseText = '抱歉，AI服务暂时不可用，请稍后重试。';
+          
+          // 更新思考消息为错误信息
+          setMessages(prev => prev.map(msg => 
+            msg.id === thinkingMessage.id 
+              ? { ...msg, text: `API调用失败：${error instanceof Error ? error.message : '未知错误'}` }
+              : msg
+          ));
+          
+          // 保存错误消息到存储
+          const errorMessage: Message = {
+            id: thinkingMessage.id,
+            text: `API调用失败：${error instanceof Error ? error.message : '未知错误'}`,
+            isUser: false,
+            timestamp: thinkingMessage.timestamp,
+          };
+          addMessageToCurrentSession(errorMessage);
         }
       } else {
-                  // 使用模拟AI回复
-          console.log('🎭 使用模拟AI生成回复...');
-          aiResponseText = await generateSimpleAIResponse(text.trim());
+        // 使用本地AI回复
+        console.log('🤖 使用本地AI生成回复...');
+        console.log('📄 当前会话OCR数据:', ocrData);
         
+        // 使用包含OCR数据的AI回复函数
+        aiResponseText = generateAIResponseWithOcrData(text.trim(), ocrData);
+        
+        // 添加AI回复消息
         const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUniqueMessageId(),
           text: aiResponseText,
           isUser: false,
           timestamp: new Date(),
         };
-
+        
         setMessages(prev => [...prev, aiMessage]);
+        addMessageToCurrentSession(aiMessage);
         
-        // 保存AI回复到存储
-        await addMessageToCurrentSession(aiMessage);
-        
-        // 添加新消息后滚动到顶部（因为inverted为true）
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        }, 100);
+        console.log('✅ 本地AI回复已生成');
       }
     } catch (error) {
       console.error('发送消息失败:', error);
       
-      // 如果发送失败，添加错误消息
+      // 添加错误提示消息
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: '抱歉，发送消息时出现错误，请重试。',
+        id: generateUniqueMessageId(),
+        text: `发送消息失败：${error instanceof Error ? error.message : '未知错误'}`,
         isUser: false,
         timestamp: new Date(),
       };
       
       setMessages(prev => [...prev, errorMessage]);
-      await addMessageToCurrentSession(errorMessage);
+      addMessageToCurrentSession(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -299,7 +364,7 @@ export default function ChatScreen() {
   // 处理图片上传
   const handleImageUpload = async (imageUri: string) => {
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: generateUniqueMessageId(),
       text: '',
       imageUri: imageUri,
       isUser: true,
@@ -318,7 +383,7 @@ export default function ChatScreen() {
       
       // 添加OCR识别中的消息
       const ocrMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: generateUniqueMessageId('ocr'),
         text: '正在识别图片中的文字...',
         isUser: false,
         timestamp: new Date(),
@@ -334,13 +399,35 @@ export default function ChatScreen() {
       // 移除OCR识别中的消息
       setMessages(prev => prev.filter(msg => msg.id !== ocrMessage.id));
       
+      // 更新用户消息，添加OCR数据
+      const updatedUserMessage: Message = {
+        ...newMessage,
+        ocrData: {
+          recognizedText: recognizedText,
+          timestamp: new Date(),
+        },
+      };
+      
+      // 更新消息列表中的用户消息
+      setMessages(prev => prev.map(msg => 
+        msg.id === newMessage.id ? updatedUserMessage : msg
+      ));
+      
+      // 保存更新后的用户消息到存储
+      await addMessageToCurrentSession(updatedUserMessage);
+      
       // 生成AI回复
       if (recognizedText.trim()) {
-        const aiResponseText = await generateSimpleAIResponse(recognizedText);
+        // 获取当前会话的OCR数据（包括刚识别的文字）
+        const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
+        const ocrData = await getCurrentSessionOcrData();
+        
+        // 使用包含OCR数据的AI回复函数
+        const aiResponseText = generateAIResponseWithOcrData(recognizedText, ocrData);
         
         // 添加AI回复消息
         const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUniqueMessageId(),
           text: `我识别到图片中的文字是：\n\n"${recognizedText}"\n\n${aiResponseText}`,
           isUser: false,
           timestamp: new Date(),
@@ -353,7 +440,7 @@ export default function ChatScreen() {
       } else {
         // 如果没有识别到文字，给出提示
         const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUniqueMessageId(),
           text: '抱歉，我没有识别到图片中的文字内容。请确保图片清晰且包含文字。',
           isUser: false,
           timestamp: new Date(),
@@ -370,7 +457,7 @@ export default function ChatScreen() {
       
       // 添加错误提示消息
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: generateUniqueMessageId(),
         text: `图片识别失败：${error instanceof Error ? error.message : '未知错误'}`,
         isUser: false,
         timestamp: new Date(),
@@ -386,8 +473,9 @@ export default function ChatScreen() {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
+  const renderMessage = ({ item, index }: { item: Message, index: number }) => (
     <ChatMessage
+      index={index}
       text={item.text}
       imageUri={item.imageUri}
       isUser={item.isUser}
@@ -468,15 +556,11 @@ export default function ChatScreen() {
               {getTitleName()}
             </ThemedText>
             <View style={styles.statusButtons}>
-              <ThemedText style={styles.timeText}>
-                {currentTime.toLocaleTimeString('zh-CN', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  second: '2-digit'
-                })}
-              </ThemedText>
               <TouchableOpacity onPress={() => router.push('/foods')} style={styles.foodsButton}>
                 <Ionicons name="restaurant-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/ocr-data')} style={styles.ocrDataButton}>
+                <Ionicons name="document-text-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
                 <Ionicons name="list-outline" size={20} color="#007AFF" />
@@ -496,7 +580,10 @@ export default function ChatScreen() {
               ref={flatListRef}
               data={messages.slice().reverse()}
               renderItem={renderMessage}
-              keyExtractor={item => item.id}
+              keyExtractor={item => {
+                // console.log(`🔍 FlatList keyExtractor: ${item.id}`);
+                return item.id;
+              }}
               style={styles.messagesList}
               contentContainerStyle={styles.messagesContentContainer}
               showsVerticalScrollIndicator={true}
@@ -567,15 +654,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  timeText: {
-    fontSize: 12,
-    color: '#999',
-    marginRight: 8,
-  },
   scrollButton: {
     padding: 8,
   },
   foodsButton: {
+    padding: 8,
+  },
+  ocrDataButton: {
     padding: 8,
   },
   sessionsButton: {

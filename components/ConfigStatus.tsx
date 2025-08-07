@@ -55,7 +55,7 @@ export default function ConfigStatus({ showSuggestions = true, onStatusChange }:
       
       <View style={styles.statusContainer}>
         {descriptions.map((description, index) => (
-          <ThemedText key={index} style={styles.statusText}>
+          <ThemedText key={`status_${index}_${description.substring(0, 10)}`} style={styles.statusText}>
             {description}
           </ThemedText>
         ))}
@@ -65,7 +65,7 @@ export default function ConfigStatus({ showSuggestions = true, onStatusChange }:
         <View style={styles.suggestionsContainer}>
           <ThemedText style={styles.suggestionsTitle}>配置建议:</ThemedText>
           {suggestions.map((suggestion, index) => (
-            <ThemedText key={index} style={styles.suggestionText}>
+            <ThemedText key={`suggestion_${index}_${suggestion.substring(0, 10)}`} style={styles.suggestionText}>
               {suggestion}
             </ThemedText>
           ))}

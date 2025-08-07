@@ -88,8 +88,8 @@ async function audioToBase64(audioUri: string): Promise<{ base64: string; origin
     
     const originalLength = fileInfo.size || 0;
     
-    // 验证音频文件大小 - 针对PCM格式优化
-    if (originalLength < 300) { // 小于300字节 - PCM格式更宽松的标准
+    // 验证音频文件大小 - 统一标准
+    if (originalLength < 1024) { // 小于1KB - 统一标准
       throw new Error('音频文件太小，可能录音时间过短');
     }
     
