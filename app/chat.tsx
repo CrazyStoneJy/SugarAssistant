@@ -3,9 +3,10 @@ import ChatMessage from '@/components/ChatMessage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
-import { generateAIResponse } from '@/utils/aiResponse';
+import { generateSimpleAIResponse } from '@/utils/aiResponse';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
+import { recognizeTextWithTencentOcr } from '@/utils/tencentOcrApi';
 
 import { autoInitAPI, isAPIInitialized, sendMessageToDeepSeekStream } from '@/utils/deepseekApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -250,10 +251,9 @@ export default function ChatScreen() {
           aiResponseText = '抱歉，AI服务暂时不可用，请稍后重试。';
         }
       } else {
-        // 使用模拟AI回复
-        console.log('🎭 使用模拟AI生成回复...');
-        const mockResponse = await generateAIResponse(text.trim());
-        aiResponseText = mockResponse.text;
+                  // 使用模拟AI回复
+          console.log('🎭 使用模拟AI生成回复...');
+          aiResponseText = await generateSimpleAIResponse(text.trim());
         
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -297,7 +297,7 @@ export default function ChatScreen() {
   };
 
   // 处理图片上传
-  const handleImageUpload = (imageUri: string) => {
+  const handleImageUpload = async (imageUri: string) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       text: '',
@@ -311,6 +311,74 @@ export default function ChatScreen() {
     
     // 移除滚动操作，让FlatList自动处理
     // 当inverted为true时，新消息会自动显示在顶部
+
+    // 开始OCR识别
+    try {
+      console.log('🔍 开始识别图片中的文字...');
+      
+      // 添加OCR识别中的消息
+      const ocrMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: '正在识别图片中的文字...',
+        isUser: false,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, ocrMessage]);
+      
+      // 调用腾讯OCR API识别文字
+      const recognizedText = await recognizeTextWithTencentOcr(imageUri);
+      
+      console.log('✅ OCR识别结果:', recognizedText);
+      
+      // 移除OCR识别中的消息
+      setMessages(prev => prev.filter(msg => msg.id !== ocrMessage.id));
+      
+      // 生成AI回复
+      if (recognizedText.trim()) {
+        const aiResponseText = await generateSimpleAIResponse(recognizedText);
+        
+        // 添加AI回复消息
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: `我识别到图片中的文字是：\n\n"${recognizedText}"\n\n${aiResponseText}`,
+          isUser: false,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+        addMessageToCurrentSession(aiMessage);
+        
+        console.log('✅ AI回复已生成');
+      } else {
+        // 如果没有识别到文字，给出提示
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: '抱歉，我没有识别到图片中的文字内容。请确保图片清晰且包含文字。',
+          isUser: false,
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+        addMessageToCurrentSession(aiMessage);
+      }
+    } catch (error) {
+      console.error('❌ OCR识别失败:', error);
+      
+      // 移除OCR识别中的消息
+      setMessages(prev => prev.filter(msg => msg.text !== '正在识别图片中的文字...'));
+      
+      // 添加错误提示消息
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `图片识别失败：${error instanceof Error ? error.message : '未知错误'}`,
+        isUser: false,
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      addMessageToCurrentSession(errorMessage);
+    }
   };
 
   const scrollToTop = () => {

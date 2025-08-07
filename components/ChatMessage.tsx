@@ -37,6 +37,58 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
     }
   };
 
+  // 格式化时间显示
+  const formatTimestamp = (timestamp: Date) => {
+    const now = new Date();
+    const messageDate = new Date(timestamp);
+    
+    // 获取年月日（使用本地时间）
+    const messageYear = messageDate.getFullYear();
+    const messageMonth = messageDate.getMonth() + 1;
+    const messageDay = messageDate.getDate();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth() + 1;
+    const nowDay = now.getDate(); // 修正：使用getDate()而不是getDay()
+    
+    // 格式化时分秒
+    const hours = messageDate.getHours().toString().padStart(2, '0');
+    const minutes = messageDate.getMinutes().toString().padStart(2, '0');
+    const seconds = messageDate.getSeconds().toString().padStart(2, '0');
+    
+    // 调试信息
+    console.log('时间判断调试:', {
+      messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
+      nowDate: `${nowYear}-${nowMonth}-${nowDay}`,
+      isToday: messageYear === nowYear && messageMonth === nowMonth && messageDay === nowDay
+    });
+    
+    // 判断是否是今天
+    if (messageYear === nowYear && messageMonth === nowMonth && messageDay === nowDay) {
+      return `今天 ${hours}时${minutes}分${seconds}秒`;
+    }
+    
+    // 判断是否是昨天
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayYear = yesterday.getFullYear();
+    const yesterdayMonth = yesterday.getMonth() + 1;
+    const yesterdayDay = yesterday.getDate();
+    
+    console.log('昨天判断调试:', {
+      messageDate: `${messageYear}-${messageMonth}-${messageDay}`,
+      yesterdayDate: `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`,
+      isYesterday: messageYear === yesterdayYear && messageMonth === yesterdayMonth && messageDay === yesterdayDay
+    });
+    
+    if (messageYear === yesterdayYear && messageMonth === yesterdayMonth && messageDay === yesterdayDay) {
+      return `昨天 ${hours}时${minutes}分${seconds}秒`;
+    }
+    
+    // 其他情况显示完整日期
+    const month = messageMonth.toString().padStart(2, '0');
+    const day = messageDay.toString().padStart(2, '0');
+    return `${messageYear}年${month}月${day}日 ${hours}时${minutes}分${seconds}秒`;
+  };
+
   return (
     <>
       <View style={[styles.container, isUser ? styles.userContainer : styles.aiContainer]}>
@@ -91,7 +143,7 @@ export default function ChatMessage({ text, imageUri, isUser, timestamp, isThink
         )}
         
         <ThemedText style={styles.timestamp}>
-          {timestamp.toLocaleTimeString()}
+          {formatTimestamp(timestamp)}
         </ThemedText>
       </View>
 

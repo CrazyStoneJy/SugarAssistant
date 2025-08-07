@@ -69,4 +69,33 @@ export function getTypingDelay(messageLength: number): number {
   const baseDelay = 1000;
   const perCharDelay = 50;
   return baseDelay + (messageLength * perCharDelay);
+}
+
+/**
+ * 生成简单的AI回复字符串
+ */
+export function generateSimpleAIResponse(userMessage: string): string {
+  const message = userMessage.toLowerCase();
+  
+  // 检查关键词
+  for (const [type, words] of Object.entries(keywords)) {
+    for (const word of words) {
+      if (message.includes(word)) {
+        const responsesList = responses[type as keyof typeof responses];
+        const randomResponse = responsesList[Math.floor(Math.random() * responsesList.length)];
+        return randomResponse;
+      }
+    }
+  }
+  
+  // 默认回复
+  const defaultResponses = [
+    '我收到了你的消息，让我想想怎么回复你...',
+    '这是一个很有趣的话题！',
+    '谢谢你的分享，我学到了新东西。',
+    '我理解你的想法，让我为你提供一些建议。',
+  ];
+  
+  const randomResponse = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+  return randomResponse;
 } 
