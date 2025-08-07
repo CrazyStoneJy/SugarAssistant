@@ -26,6 +26,7 @@ import {
 interface Message {
   id: string;
   text: string;
+  imageUri?: string; // 添加图片URI支持
   isUser: boolean;
   timestamp: Date;
 }
@@ -147,10 +148,7 @@ export default function ChatScreen() {
     setInputText('');
     setIsLoading(true);
     
-    // 添加用户消息后滚动到顶部（因为inverted为true）
-    setTimeout(() => {
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    }, 100);
+    // 移除用户消息后的滚动，让FlatList自动处理
 
     try {
       // 保存用户消息到存储
@@ -181,10 +179,7 @@ export default function ChatScreen() {
         
         setMessages(prev => [...prev, thinkingMessage]);
         
-        // 添加思考消息后滚动到顶部（因为inverted为true）
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        }, 100);
+        // 移除思考消息后的滚动
         
         try {
           // 使用流式API
@@ -204,10 +199,7 @@ export default function ChatScreen() {
                   : msg
               ));
               
-              // 滚动到顶部（因为inverted为true）
-              setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-              }, 50);
+              // 移除流式更新时的滚动
             },
             (completeResponse: string) => {
               // 流式传输完成
@@ -221,10 +213,7 @@ export default function ChatScreen() {
                   : msg
               ));
               
-              // 最终滚动到顶部
-              setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-              }, 50);
+              // 移除最终滚动
               
               // 保存完整的AI回复到存储
               const aiMessage: Message = {
@@ -302,7 +291,26 @@ export default function ChatScreen() {
   };
 
   const handleVoiceResult = (text: string) => {
-    sendMessage(text);
+    if (text.trim()) {
+      sendMessage(text.trim());
+    }
+  };
+
+  // 处理图片上传
+  const handleImageUpload = (imageUri: string) => {
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: '',
+      imageUri: imageUri,
+      isUser: true,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    addMessageToCurrentSession(newMessage);
+    
+    // 移除滚动操作，让FlatList自动处理
+    // 当inverted为true时，新消息会自动显示在顶部
   };
 
   const scrollToTop = () => {
@@ -313,6 +321,7 @@ export default function ChatScreen() {
   const renderMessage = ({ item }: { item: Message }) => (
     <ChatMessage
       text={item.text}
+      imageUri={item.imageUri}
       isUser={item.isUser}
       timestamp={item.timestamp}
       isThinking={isLoading && !item.isUser && item.text === ''}
@@ -424,13 +433,18 @@ export default function ChatScreen() {
               contentContainerStyle={styles.messagesContentContainer}
               showsVerticalScrollIndicator={true}
               scrollEnabled={true}
-              // bounces={true}
               alwaysBounceVertical={false}
-              removeClippedSubviews={false}
-              // keyboardShouldPersistTaps="always"
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              initialNumToRender={10}
               keyboardDismissMode="on-drag"
               inverted={true}
               nestedScrollEnabled={false}
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+                autoscrollToTopThreshold: 10,
+              }}
             />
           </View>
 
@@ -441,6 +455,7 @@ export default function ChatScreen() {
               onChangeText={setInputText}
               onSend={sendMessage}
               onVoiceResult={handleVoiceResult}
+              onImageUpload={handleImageUpload}
               disabled={isLoading}
             />
           </View>

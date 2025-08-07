@@ -29,7 +29,7 @@ let tokenExpireTime: number = 0;
 /**
  * 获取百度语音API访问令牌
  */
-async function getBaiduToken(): Promise<string> {
+export async function getBaiduToken(): Promise<string> {
   const config = getBaiduSpeechConfig();
   
   // 检查是否已配置
@@ -88,8 +88,8 @@ async function audioToBase64(audioUri: string): Promise<{ base64: string; origin
     
     const originalLength = fileInfo.size || 0;
     
-    // 验证音频文件大小
-    if (originalLength < 1024) {
+    // 验证音频文件大小 - 针对PCM格式优化
+    if (originalLength < 300) { // 小于300字节 - PCM格式更宽松的标准
       throw new Error('音频文件太小，可能录音时间过短');
     }
     
@@ -301,4 +301,143 @@ export function getBaiduSpeechStatus() {
       secretKey: config.secretKey.substring(0, 8) + '...',
     } : null,
   };
+} 
+
+/**
+ * 详细诊断百度语音识别问题
+ */
+export async function diagnoseBaiduSpeechIssues(): Promise<{
+  config: {
+    isConfigured: boolean;
+    hasAppId: boolean;
+    hasApiKey: boolean;
+    hasSecretKey: boolean;
+    issues: string[];
+  };
+  token: {
+    canGetToken: boolean;
+    tokenError: string | null;
+    tokenValue: string | null;
+  };
+  network: {
+    canConnect: boolean;
+    networkError: string | null;
+  };
+  audio: {
+    format: string;
+    sampleRate: number;
+    channels: number;
+    bitDepth: number;
+  };
+  recommendations: string[];
+}> {
+  const diagnosis = {
+    config: {
+      isConfigured: false,
+      hasAppId: false,
+      hasApiKey: false,
+      hasSecretKey: false,
+      issues: [] as string[],
+    },
+    token: {
+      canGetToken: false,
+      tokenError: null as string | null,
+      tokenValue: null as string | null,
+    },
+    network: {
+      canConnect: false,
+      networkError: null as string | null,
+    },
+    audio: {
+      format: 'PCM',
+      sampleRate: 16000,
+      channels: 1,
+      bitDepth: 16,
+    },
+    recommendations: [] as string[],
+  };
+
+  try {
+    console.log('🔍 开始百度语音API详细诊断...');
+
+    // 1. 检查配置
+    const config = getBaiduSpeechConfig();
+    diagnosis.config.isConfigured = isBaiduSpeechConfigured();
+    diagnosis.config.hasAppId = !!config.appId && config.appId !== 'your_baidu_app_id_here';
+    diagnosis.config.hasApiKey = !!config.apiKey && config.apiKey !== 'your_baidu_api_key_here';
+    diagnosis.config.hasSecretKey = !!config.secretKey && config.secretKey !== 'your_baidu_secret_key_here';
+
+    if (!diagnosis.config.hasAppId) {
+      diagnosis.config.issues.push('App ID未配置或使用默认值');
+    }
+    if (!diagnosis.config.hasApiKey) {
+      diagnosis.config.issues.push('API Key未配置或使用默认值');
+    }
+    if (!diagnosis.config.hasSecretKey) {
+      diagnosis.config.issues.push('Secret Key未配置或使用默认值');
+    }
+
+    console.log('📋 配置检查结果:', diagnosis.config);
+
+    // 2. 检查Token获取
+    if (diagnosis.config.isConfigured) {
+      try {
+        const token = await getBaiduToken();
+        diagnosis.token.canGetToken = true;
+        diagnosis.token.tokenValue = token.substring(0, 20) + '...';
+        console.log('✅ Token获取成功');
+      } catch (error) {
+        diagnosis.token.canGetToken = false;
+        diagnosis.token.tokenError = error instanceof Error ? error.message : '未知错误';
+        console.error('❌ Token获取失败:', diagnosis.token.tokenError);
+      }
+    }
+
+    // 3. 检查网络连接
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('https://vop.baidu.com/pro_api', {
+        method: 'HEAD',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      diagnosis.network.canConnect = response.status !== 0;
+      console.log('✅ 网络连接正常');
+    } catch (error) {
+      diagnosis.network.canConnect = false;
+      diagnosis.network.networkError = error instanceof Error ? error.message : '未知错误';
+      console.error('❌ 网络连接失败:', diagnosis.network.networkError);
+    }
+
+    // 4. 生成建议
+    if (diagnosis.config.issues.length > 0) {
+      diagnosis.recommendations.push('🔧 配置问题：');
+      diagnosis.recommendations.push(...diagnosis.config.issues.map(issue => `  - ${issue}`));
+    }
+
+    if (!diagnosis.token.canGetToken && diagnosis.config.isConfigured) {
+      diagnosis.recommendations.push('🔑 Token问题：');
+      diagnosis.recommendations.push(`  - ${diagnosis.token.tokenError}`);
+    }
+
+    if (!diagnosis.network.canConnect) {
+      diagnosis.recommendations.push('🌐 网络问题：');
+      diagnosis.recommendations.push(`  - ${diagnosis.network.networkError}`);
+    }
+
+    if (diagnosis.recommendations.length === 0) {
+      diagnosis.recommendations.push('✅ 百度语音API配置和连接都正常');
+    }
+
+    console.log('💡 诊断建议:', diagnosis.recommendations);
+
+  } catch (error) {
+    console.error('❌ 诊断过程出错:', error);
+    diagnosis.recommendations.push(`❌ 诊断失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  }
+
+  return diagnosis;
 } 

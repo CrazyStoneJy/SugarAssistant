@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
+  Image,
   Keyboard,
   StyleSheet,
   TextInput,
@@ -9,12 +12,14 @@ import {
   View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
+import VoiceInput from './VoiceInput';
 
 interface WeChatInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onSend: (text: string) => void;
   onVoiceResult: (text: string) => void;
+  onImageUpload?: (imageUri: string) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -24,6 +29,7 @@ export default function WeChatInput({
   onChangeText,
   onSend,
   onVoiceResult,
+  onImageUpload,
   disabled = false,
   placeholder = '输入消息...',
 }: WeChatInputProps) {
@@ -70,6 +76,38 @@ export default function WeChatInput({
     }).start();
   };
 
+  // 选择图片
+  const pickImage = async () => {
+    try {
+      // 请求相册权限
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('需要权限', '请允许访问相册以选择图片');
+        return;
+      }
+
+      // 打开图片选择器 - 移除裁剪功能
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false, // 移除裁剪功能
+        aspect: undefined, // 移除宽高比限制
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        
+        // 直接调用图片上传回调，不显示预览
+        if (onImageUpload) {
+          onImageUpload(imageUri);
+        }
+      }
+    } catch (error) {
+      console.error('选择图片失败:', error);
+      Alert.alert('选择图片失败', '请重试');
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* 输入区域 */}
@@ -105,6 +143,19 @@ export default function WeChatInput({
           />
         </View>
 
+        {/* 图片上传按钮 */}
+        <TouchableOpacity
+          style={[styles.imageButton, disabled && styles.imageButtonDisabled]}
+          onPress={pickImage}
+          disabled={disabled || showVoiceButton}
+        >
+          <Ionicons
+            name="image-outline"
+            size={24}
+            color={disabled ? '#CCCCCC' : '#007AFF'}
+          />
+        </TouchableOpacity>
+
         {/* 语音/键盘切换按钮 */}
         <TouchableOpacity
           style={[styles.toggleButton, isProcessingVoice && styles.processingButton]}
@@ -130,8 +181,10 @@ export default function WeChatInput({
         )}
       </View>
 
+      {/* 图片预览区域 */}
+      {/* 移除选中的图片 */}
       {/* 语音输入区域 */}
-      {/* {showVoiceButton && (<Animated.View
+      {showVoiceButton && (<Animated.View
         style={[
           styles.voiceContainer,
           {
@@ -156,7 +209,7 @@ export default function WeChatInput({
             <ThemedText style={styles.processingText}>正在识别语音...</ThemedText>
           </View>
         )}
-      </Animated.View>)} */}
+      </Animated.View>)}
     </View>
   );
 }
@@ -261,5 +314,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FF9500',
     textAlign: 'center',
+  },
+  imageButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  imageButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+  },
+  diagnoseButtonText: {
+    color: '#FFFFFF',
+    marginLeft: 5,
+    fontSize: 14,
   },
 }); 

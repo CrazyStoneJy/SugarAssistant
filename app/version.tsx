@@ -1,6 +1,8 @@
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { getBaiduSpeechConfig, isBaiduSpeechConfigured } from '@/config/env';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
+import { diagnoseBaiduSpeechIssues } from '@/utils/baiduSpeechApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
@@ -41,6 +43,8 @@ export default function VersionScreen() {
     isUpdateAvailable: false,
     lastUpdateCheck: null,
   });
+  const [diagnosis, setDiagnosis] = useState<any>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   useEffect(() => {
     loadVersionInfo();
@@ -150,6 +154,24 @@ export default function VersionScreen() {
     return '#4CAF50';
   };
 
+  const runDiagnosis = async () => {
+    setIsDiagnosing(true);
+    try {
+      const result = await diagnoseBaiduSpeechIssues();
+      setDiagnosis(result);
+      
+      const message = result.recommendations.join('\n');
+      Alert.alert('百度语音API诊断结果', message);
+    } catch (error) {
+      Alert.alert('诊断失败', error instanceof Error ? error.message : '未知错误');
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
+  const config = getBaiduSpeechConfig();
+  const isConfigured = isBaiduSpeechConfigured();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar 
@@ -257,6 +279,48 @@ export default function VersionScreen() {
               <ThemedText style={styles.refreshButtonText}>刷新信息</ThemedText>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>百度语音API配置</ThemedText>
+            <ThemedText style={styles.infoText}>
+              配置状态: {isConfigured ? '✅ 已配置' : '❌ 未配置'}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              App ID: {config.appId ? `${config.appId.substring(0, 8)}...` : '未配置'}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              API Key: {config.apiKey ? `${config.apiKey.substring(0, 8)}...` : '未配置'}
+            </ThemedText>
+            <ThemedText style={styles.infoText}>
+              Secret Key: {config.secretKey ? `${config.secretKey.substring(0, 8)}...` : '未配置'}
+            </ThemedText>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.diagnoseButton, isDiagnosing && styles.diagnoseButtonDisabled]}
+            onPress={runDiagnosis}
+            disabled={isDiagnosing}
+          >
+            <Ionicons
+              name="bug"
+              size={20}
+              color="#FFFFFF"
+            />
+            <ThemedText style={styles.diagnoseButtonText}>
+              {isDiagnosing ? '诊断中...' : '诊断百度语音API'}
+            </ThemedText>
+          </TouchableOpacity>
+
+          {diagnosis && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionTitle}>诊断结果</ThemedText>
+              {diagnosis.recommendations.map((rec: string, index: number) => (
+                <ThemedText key={index} style={styles.diagnosisText}>
+                  {rec}
+                </ThemedText>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
@@ -365,5 +429,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  section: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  diagnoseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF9500',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  diagnoseButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  diagnoseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  diagnosisText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
   },
 }); 
