@@ -202,8 +202,8 @@ export default function ChatScreen() {
       await addMessageToCurrentSession(userMessage);
 
       // 获取当前会话的OCR数据
-      const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
-      const ocrData = await getCurrentSessionOcrData();
+      const { getStoredAbnormalIndicators } = await import('@/utils/tencentOcrApi');
+      const ocrData = await getStoredAbnormalIndicators();
       
       // 将OCR数据转换为字符串数组
       const ocrTexts = ocrData.map(item => item.text);
@@ -394,10 +394,11 @@ export default function ChatScreen() {
       
       setMessages(prev => [...prev, ocrMessage]);
       
-      // 调用腾讯OCR API识别文字
-      const recognizedText = await recognizeTextWithTencentOcr(imageUri);
+      // 调用腾讯OCR API识别文字，现在返回识别文字和异常数据
+      const { recognizedText, abnormalData } = await recognizeTextWithTencentOcr(imageUri);
       
       console.log('✅ OCR识别结果:', recognizedText);
+      console.log('🔍 异常指标数据:', abnormalData);
       
       // 移除OCR识别中的消息
       setMessages(prev => prev.filter(msg => msg.id !== ocrMessage.id));
@@ -421,12 +422,9 @@ export default function ChatScreen() {
       
       // 生成AI回复
       if (recognizedText.trim()) {
-        // 获取当前会话的OCR数据（包括刚识别的文字）
-        const { getCurrentSessionOcrData } = await import('@/utils/chatStorage');
-        const ocrData = await getCurrentSessionOcrData();
-        
-        // 将OCR数据转换为字符串数组
-        const ocrTexts = ocrData.map(item => item.text);
+        // 获取所有持久化的异常指标数据
+        const { getStoredAbnormalIndicators } = await import('@/utils/tencentOcrApi');
+        const storedAbnormalData = await getStoredAbnormalIndicators();
         
         // 构建对话历史 - 只使用最后10条消息
         const conversationHistory = messages
@@ -503,7 +501,7 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            ocrTexts
+            storedAbnormalData.map(item => item.text) // 传递历史异常数据
           );
         } catch (error) {
           console.error('DeepSeek API调用失败:', error);

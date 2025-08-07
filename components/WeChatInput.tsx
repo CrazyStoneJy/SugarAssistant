@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react';
 import {
   Alert,
   Animated,
-  Image,
   Keyboard,
   StyleSheet,
   TextInput,
@@ -12,7 +11,6 @@ import {
   View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
-import VoiceInput from './VoiceInput';
 
 interface WeChatInputProps {
   value: string;
@@ -184,7 +182,7 @@ export default function WeChatInput({
       {/* 图片预览区域 */}
       {/* 移除选中的图片 */}
       {/* 语音输入区域 */}
-      {showVoiceButton && (<Animated.View
+      {/* {showVoiceButton && (<Animated.View
         style={[
           styles.voiceContainer,
           {
@@ -209,7 +207,7 @@ export default function WeChatInput({
             <ThemedText style={styles.processingText}>正在识别语音...</ThemedText>
           </View>
         )}
-      </Animated.View>)}
+      </Animated.View>)} */}
     </View>
   );
 }

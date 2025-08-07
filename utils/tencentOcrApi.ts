@@ -50,9 +50,9 @@ async function imageToBase64(imageUri: string): Promise<string> {
 }
 
 /**
- * 使用腾讯OCR API识别图片中的文字
+ * 使用腾讯OCR API识别图片中的文字，并进行异常指标过滤和存储
  */
-export async function recognizeTextWithTencentOcr(imageUri: string): Promise<string> {
+export async function recognizeTextWithTencentOcr(imageUri: string): Promise<{recognizedText: string, abnormalData: string[]}> {
   try {
     console.log('🔍 开始腾讯OCR文字识别...');
 
@@ -183,7 +183,20 @@ export async function recognizeTextWithTencentOcr(imageUri: string): Promise<str
 
     console.log('✅ 腾讯OCR识别成功:', recognizedText);
     
-    return recognizedText;
+    // 在OCR接口调用完成后，从原始数据中提取异常指标
+    console.log('🔍 开始从OCR原始数据中提取异常指标...');
+    const abnormalData = extractAbnormalIndicatorsFromOcrData(data);
+    console.log('✅ 异常指标提取完成，发现异常指标数量:', abnormalData.length);
+    
+    // 持久化存储异常指标数据
+    if (abnormalData.length > 0) {
+      await storeAbnormalIndicators(abnormalData);
+    }
+    
+    return {
+      recognizedText,
+      abnormalData
+    };
   } catch (error) {
     console.error('❌ 腾讯OCR识别失败:', error);
     throw new Error(`文字识别失败: ${error instanceof Error ? error.message : '未知错误'}`);
@@ -203,5 +216,269 @@ export async function checkTencentOcrAvailability(): Promise<boolean> {
   } catch (error) {
     console.error('❌ 腾讯OCR API不可用:', error);
     return false;
+  }
+} 
+
+/**
+ * 从OCR原始数据中提取异常指标
+ */
+function extractAbnormalIndicatorsFromOcrData(data: TencentOcrResponse): string[] {
+  const abnormalData: string[] = [];
+  
+  // 解析参考范围的函数
+  const parseReferenceRange = (referenceRange: string): { min: number, max: number } | null => {
+    // 匹配格式如 "3.90-6.10", "0.00-1.71", "137.0-147.0" 等
+    const match = referenceRange.match(/(\d+\.?\d*)-(\d+\.?\d*)/);
+    if (match) {
+      return {
+        min: parseFloat(match[1]),
+        max: parseFloat(match[2])
+      };
+    }
+    return null;
+  };
+  
+  // 判断数值是否异常的函数
+  const isAbnormal = (value: number, referenceRange: { min: number, max: number }): boolean => {
+    return value < referenceRange.min || value > referenceRange.max;
+  };
+  
+  // 从不同数据结构中提取检验项目数据
+  const extractTestItems = (data: TencentOcrResponse): Array<{
+    itemName: string,
+    testName: string,
+    result: string,
+    unit: string,
+    referenceRange: string,
+    resultHint: string
+  }> => {
+    const testItems: Array<{
+      itemName: string,
+      testName: string,
+      result: string,
+      unit: string,
+      referenceRange: string,
+      resultHint: string
+    }> = [];
+    
+    // 从StructuralList中提取
+    if (data.data?.Response?.StructuralList) {
+      data.data.Response.StructuralList.forEach((structuralItem: any) => {
+        if (structuralItem.Groups) {
+          structuralItem.Groups.forEach((group: any) => {
+            if (group.Lines) {
+              let itemName = '';
+              let testName = '';
+              let result = '';
+              let unit = '';
+              let referenceRange = '';
+              let resultHint = '';
+              
+              group.Lines.forEach((line: any) => {
+                const keyName = line.Key?.AutoName;
+                const value = line.Value?.AutoContent;
+                
+                if (keyName && value) {
+                  switch (keyName) {
+                    case '项目名称':
+                      itemName = value;
+                      break;
+                    case '检验项目':
+                      testName = value;
+                      break;
+                    case '结果':
+                      result = value;
+                      break;
+                    case '单位':
+                      unit = value;
+                      break;
+                    case '参考范围':
+                      referenceRange = value;
+                      break;
+                    case '结果提示':
+                      resultHint = value;
+                      break;
+                  }
+                }
+              });
+              
+              // 只有当所有必要字段都存在时才添加
+              if (itemName && testName && result && referenceRange) {
+                testItems.push({
+                  itemName,
+                  testName,
+                  result,
+                  unit,
+                  referenceRange,
+                  resultHint
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+    
+    return testItems;
+  };
+  
+  // 提取检验项目数据
+  const testItems = extractTestItems(data);
+  console.log('🔍 提取的检验项目数据:', testItems);
+  
+  // 分析每个检验项目
+  testItems.forEach(item => {
+    const resultValue = parseFloat(item.result);
+    const referenceRange = parseReferenceRange(item.referenceRange);
+    
+    if (!isNaN(resultValue) && referenceRange) {
+      const isAbnormalValue = isAbnormal(resultValue, referenceRange);
+      const hasResultHint = item.resultHint && (item.resultHint.includes('↑') || item.resultHint.includes('↓'));
+      
+      // 如果数值异常或有结果提示，则认为是异常指标
+      if (isAbnormalValue || hasResultHint) {
+        const abnormalText = `${item.testName}: ${item.result} ${item.unit} (参考范围: ${item.referenceRange})${item.resultHint ? ` ${item.resultHint}` : ''}`;
+        
+        if (!abnormalData.includes(abnormalText)) {
+          abnormalData.push(abnormalText);
+          
+          let reason = '';
+          if (isAbnormalValue) {
+            if (resultValue > referenceRange.max) {
+              reason = '偏高';
+            } else if (resultValue < referenceRange.min) {
+              reason = '偏低';
+            }
+          } else if (hasResultHint) {
+            reason = item.resultHint;
+          }
+          
+          console.log(`🔍 发现异常指标: ${item.testName} ${reason} - ${abnormalText}`);
+        }
+      }
+    }
+  });
+  
+  return abnormalData;
+}
+
+/**
+ * 从文本字符串中提取异常指标（用于其他场景）
+ */
+export function extractAbnormalIndicators(text: string): string[] {
+  const abnormalData: string[] = [];
+  
+  // 将文本按行分割
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // 定义异常指标的关键词和模式
+  const abnormalPatterns = [
+    // 血糖相关异常 - 更精确的匹配
+    { pattern: /血糖.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '血糖异常' },
+    { pattern: /空腹血糖.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '空腹血糖异常' },
+    { pattern: /餐后血糖.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '餐后血糖异常' },
+    { pattern: /糖化血红蛋白.*?([>≥]?\s*\d+\.?\d*\s*%)/i, name: '糖化血红蛋白异常' },
+    
+    // 血压相关异常
+    { pattern: /血压.*?(\d+\/\d+\s*mmHg)/i, name: '血压异常' },
+    { pattern: /收缩压.*?([>≥]?\s*\d+\s*mmHg)/i, name: '收缩压异常' },
+    { pattern: /舒张压.*?([>≥]?\s*\d+\s*mmHg)/i, name: '舒张压异常' },
+    
+    // 体重相关异常
+    { pattern: /体重.*?([>≥]?\s*\d+\.?\d*\s*kg)/i, name: '体重异常' },
+    { pattern: /BMI.*?([>≥]?\s*\d+\.?\d*)/i, name: 'BMI异常' },
+    
+    // 血脂相关异常
+    { pattern: /总胆固醇.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '总胆固醇异常' },
+    { pattern: /胆固醇.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '胆固醇异常' },
+    { pattern: /甘油三酯.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: '甘油三酯异常' },
+    { pattern: /HDL.*?([<≤]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: 'HDL异常' },
+    { pattern: /LDL.*?([>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL))/i, name: 'LDL异常' },
+    
+    // 其他异常指标
+    { pattern: /尿酸.*?([>≥]?\s*\d+\.?\d*\s*(μmol\/L|mg\/dL))/i, name: '尿酸异常' },
+    { pattern: /肌酐.*?([>≥]?\s*\d+\.?\d*\s*(μmol\/L|mg\/dL))/i, name: '肌酐异常' },
+    { pattern: /转氨酶.*?([>≥]?\s*\d+\.?\d*\s*(U\/L))/i, name: '转氨酶异常' },
+    { pattern: /ALT.*?([>≥]?\s*\d+\.?\d*\s*(U\/L))/i, name: 'ALT异常' },
+    { pattern: /AST.*?([>≥]?\s*\d+\.?\d*\s*(U\/L))/i, name: 'AST异常' },
+    
+    // 异常关键词匹配
+    { pattern: /(异常|偏高|偏低|升高|降低|超标|超限|危险|警告|注意)/i, name: '异常关键词' },
+    { pattern: /(糖尿病|高血压|高血脂|肥胖|代谢综合征)/i, name: '疾病关键词' },
+  ];
+  
+  lines.forEach(line => {
+    abnormalPatterns.forEach(({ pattern, name }) => {
+      const match = line.match(pattern);
+      if (match) {
+        // 提取包含异常指标的完整行
+        const abnormalLine = line.trim();
+        if (!abnormalData.includes(abnormalLine)) {
+          abnormalData.push(abnormalLine);
+          console.log(`🔍 发现${name}: ${abnormalLine}`);
+        }
+      }
+    });
+  });
+  
+  return abnormalData;
+}
+
+/**
+ * 持久化存储异常指标数据
+ */
+export async function storeAbnormalIndicators(abnormalData: string[], timestamp: Date = new Date()): Promise<void> {
+  try {
+    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    
+    // 获取现有的异常指标数据
+    const existingDataJson = await AsyncStorage.default.getItem('abnormal_indicators');
+    const existingData = existingDataJson ? JSON.parse(existingDataJson) : [];
+    
+    // 添加新的异常指标数据
+    const newAbnormalData = abnormalData.map(text => ({
+      text,
+      timestamp: timestamp.toISOString(),
+      source: 'ocr'
+    }));
+    
+    // 合并数据（去重）
+    const allData = [...existingData, ...newAbnormalData];
+    
+    // 保存到AsyncStorage
+    await AsyncStorage.default.setItem('abnormal_indicators', JSON.stringify(allData));
+    
+    console.log(`💾 异常指标数据已持久化存储，新增 ${abnormalData.length} 条`);
+  } catch (error) {
+    console.error('❌ 存储异常指标数据失败:', error);
+  }
+}
+
+/**
+ * 获取所有持久化的异常指标数据
+ */
+export async function getStoredAbnormalIndicators(): Promise<Array<{text: string, timestamp: string, source: string}>> {
+  try {
+    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    
+    const dataJson = await AsyncStorage.default.getItem('abnormal_indicators');
+    return dataJson ? JSON.parse(dataJson) : [];
+  } catch (error) {
+    console.error('❌ 获取异常指标数据失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 清除所有持久化的异常指标数据
+ */
+export async function clearStoredAbnormalIndicators(): Promise<void> {
+  try {
+    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    
+    await AsyncStorage.default.removeItem('abnormal_indicators');
+    console.log('🗑️ 异常指标数据已清除');
+  } catch (error) {
+    console.error('❌ 清除异常指标数据失败:', error);
   }
 } 

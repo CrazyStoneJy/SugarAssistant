@@ -360,12 +360,20 @@ export async function sendMessageToDeepSeek(
   }
 
   try {
-    // 构建包含OCR数据的system prompt
+    // 构建包含异常指标OCR数据的system prompt
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
     
     if (ocrData.length > 0) {
-      const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
-      systemPrompt += ocrContext;
+      // 过滤出异常指标数据
+      const abnormalData = filterAbnormalIndicators(ocrData);
+      
+      if (abnormalData.length > 0) {
+        const ocrContext = `\n\n用户上传的图片中识别到的异常指标数据：\n${abnormalData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些异常指标数据，结合营养师的专业知识，为用户提供针对性的饮食建议和血糖控制建议。重点关注异常指标的改善方案。`;
+        systemPrompt += ocrContext;
+        console.log("异常指标数据已添加到system prompt:", abnormalData);
+      } else {
+        console.log("未发现异常指标数据，使用默认system prompt");
+      }
     }
 
     console.log("systemPrompt", systemPrompt);
@@ -378,7 +386,8 @@ export async function sendMessageToDeepSeek(
     ];
 
     console.log("history messages", messages);
-    console.log("OCR data included:", ocrData.length > 0 ? ocrData : "无");
+    console.log("OCR data included:", ocrData.length > 0 ? ocrData.length : "无");
+    console.log("Abnormal indicators found:", filterAbnormalIndicators(ocrData).length);
 
     // 调用API
     const response = await deepseekAPI!.chat(messages, {
@@ -396,7 +405,7 @@ export async function sendMessageToDeepSeek(
 }
 
 /**
- * 流式发送消息到DeepSeek API（包含OCR数据）
+ * 流式发送消息到DeepSeek API（包含异常指标OCR数据）
  */
 export async function sendMessageToDeepSeekStream(
   userMessage: string,
@@ -404,7 +413,7 @@ export async function sendMessageToDeepSeekStream(
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string) => void,
   onError: (error: Error) => void,
-  ocrData: string[] = []
+  historicalAbnormalData: string[] = []
 ): Promise<void> {
   if (!deepseekAPI) {
     // 尝试自动初始化
@@ -418,23 +427,24 @@ export async function sendMessageToDeepSeekStream(
   }
 
   try {
-    // 构建包含OCR数据的system prompt
+    // 构建包含异常指标OCR数据的system prompt
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
     
-    if (ocrData.length > 0) {
-      const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
-      systemPrompt += ocrContext;
+    // 添加历史异常指标数据
+    if (historicalAbnormalData.length > 0) {
+      const historicalContext = `\n\n用户历史异常指标数据：\n${historicalAbnormalData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些历史异常指标数据，结合营养师的专业知识，为用户提供针对性的饮食建议和血糖控制建议。重点关注异常指标的改善方案。`;
+      systemPrompt += historicalContext;
+      console.log("历史异常指标数据已添加到system prompt:", historicalAbnormalData.length, "条");
     }
-
+    
+    console.log("systemPrompt", systemPrompt)
+    
     // 构建消息历史
     const messages: DeepSeekMessage[] = [
       deepseekAPI!.createSystemMessage(systemPrompt),
       ...conversationHistory,
       deepseekAPI!.createUserMessage(userMessage),
     ];
-
-    console.log("stream history messages length", messages.length);
-    console.log("OCR data included:", ocrData.length > 0 ? ocrData : "无");
 
     // 调用流式API
     await deepseekAPI!.chatStream(
@@ -471,9 +481,60 @@ export function getAPIStatus(): {
 }
 
 /**
- * 创建包含OCR数据的system message
+ * 过滤OCR数据，只保留异常指标的数据
  */
-export function createSystemMessageWithOcrData(ocrData: string[] = []): DeepSeekMessage {
+export function filterAbnormalIndicators(ocrData: string[]): string[] {
+  const abnormalData: string[] = [];
+  
+  // 定义异常指标的关键词和模式
+  const abnormalPatterns = [
+    // 血糖相关异常
+    /血糖.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /血糖.*[<≤]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /空腹血糖.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /餐后血糖.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    
+    // 血压相关异常
+    /血压.*[>≥]?\s*\d+\/\d+\s*mmHg/i,
+    /收缩压.*[>≥]?\s*\d+\s*mmHg/i,
+    /舒张压.*[>≥]?\s*\d+\s*mmHg/i,
+    
+    // 体重相关异常
+    /体重.*[>≥]?\s*\d+\.?\d*\s*kg/i,
+    /BMI.*[>≥]?\s*\d+\.?\d*/i,
+    
+    // 血脂相关异常
+    /胆固醇.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /甘油三酯.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /HDL.*[<≤]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    /LDL.*[>≥]?\s*\d+\.?\d*\s*(mmol\/L|mg\/dL)/i,
+    
+    // 其他异常指标
+    /尿酸.*[>≥]?\s*\d+\.?\d*\s*(μmol\/L|mg\/dL)/i,
+    /肌酐.*[>≥]?\s*\d+\.?\d*\s*(μmol\/L|mg\/dL)/i,
+    /转氨酶.*[>≥]?\s*\d+\.?\d*\s*(U\/L)/i,
+    
+    // 异常关键词
+    /异常|偏高|偏低|升高|降低|超标|超限|危险|警告|注意/i,
+    /糖尿病|高血压|高血脂|肥胖|代谢综合征/i,
+  ];
+  
+  ocrData.forEach(text => {
+    // 检查是否包含异常指标
+    const hasAbnormalIndicator = abnormalPatterns.some(pattern => pattern.test(text));
+    
+    if (hasAbnormalIndicator) {
+      abnormalData.push(text);
+    }
+  });
+  
+  return abnormalData;
+}
+
+/**
+ * 创建包含异常指标OCR数据的system message
+ */
+export function createSystemMessageWithAbnormalOcrData(ocrData: string[] = []): DeepSeekMessage {
   if (!deepseekAPI) {
     throw new Error('DeepSeek API未初始化');
   }
@@ -481,8 +542,13 @@ export function createSystemMessageWithOcrData(ocrData: string[] = []): DeepSeek
   let systemPrompt = DEFAULT_SYSTEM_PROMPT;
   
   if (ocrData.length > 0) {
-    const ocrContext = `\n\n用户之前上传的图片中识别到的文字内容：\n${ocrData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些识别到的文字内容，结合营养师的专业知识，为用户提供相关的饮食建议和血糖控制建议。`;
-    systemPrompt += ocrContext;
+    // 过滤出异常指标数据
+    const abnormalData = filterAbnormalIndicators(ocrData);
+    
+    if (abnormalData.length > 0) {
+      const ocrContext = `\n\n用户上传的图片中识别到的异常指标数据：\n${abnormalData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些异常指标数据，结合营养师的专业知识，为用户提供针对性的饮食建议和血糖控制建议。重点关注异常指标的改善方案。`;
+      systemPrompt += ocrContext;
+    }
   }
 
   return deepseekAPI.createSystemMessage(systemPrompt);
