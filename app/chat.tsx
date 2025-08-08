@@ -90,7 +90,6 @@ export default function ChatScreen() {
   const [isAPIAvailable, setIsAPIAvailable] = useState(true);
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -106,9 +105,7 @@ export default function ChatScreen() {
     initializeChat();
   }, []);
 
-  // 移除键盘监听，让系统自动处理
 
-  // 移除应用状态监听，让系统自动处理
 
   const initializeChat = async () => {
     try {
@@ -631,9 +628,10 @@ export default function ChatScreen() {
         backgroundColor="transparent" 
         translucent={Platform.OS === 'android'}
       />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={0}
         enabled={true}
       >
         <ThemedView style={styles.container}>
@@ -680,7 +678,7 @@ export default function ChatScreen() {
               maxToRenderPerBatch={10}
               windowSize={10}
               initialNumToRender={10}
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="none"
               inverted={true}
               nestedScrollEnabled={false}
               maintainVisibleContentPosition={{

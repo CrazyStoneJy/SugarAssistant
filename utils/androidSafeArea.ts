@@ -15,8 +15,8 @@ export const getStatusBarHeight = (): number => {
  */
 export const getSafeAreaBottomHeight = (): number => {
   if (Platform.OS === 'android') {
-    // Android设备使用更小的底部padding，让输入框更贴近底部
-    return Math.max(4, getStatusBarHeight() * 0.2); // 进一步减少，从8改为4，从0.3改为0.2
+    // 为有底部导航栏的设备（如小米手机）提供更多空间
+    return Math.max(8, getStatusBarHeight() * 0.3);
   }
   return 20; // iOS默认值
 };
@@ -26,8 +26,8 @@ export const getSafeAreaBottomHeight = (): number => {
  */
 export const getInputBottomPadding = (): number => {
   if (Platform.OS === 'android') {
-    // 输入框使用最小的底部padding，让输入框贴近底部
-    return 1; // 进一步减少，从2改为1
+    // 为输入框提供足够的底部空间，避免被导航栏遮挡
+    return 8; // 增加底部padding
   }
   return 20; // iOS默认值
 };
@@ -37,8 +37,8 @@ export const getInputBottomPadding = (): number => {
  */
 export const getInputContainerBottomPadding = (): number => {
   if (Platform.OS === 'android') {
-    // 输入框容器使用更小的底部padding
-    return 0; // 保持为0
+    // 为输入框容器提供足够的底部空间
+    return 12; // 增加容器底部padding
   }
   return 20; // iOS默认值
 };
@@ -76,4 +76,25 @@ export const isNotchDevice = (): boolean => {
   
   // 高宽比大于2.1的设备可能是刘海屏
   return aspectRatio > 2.1;
+};
+
+/**
+ * 获取底部导航栏高度（估算）
+ */
+export const getBottomNavigationHeight = (): number => {
+  if (Platform.OS === 'android') {
+    // 大多数Android设备的底部导航栏高度约为48-56dp
+    return 56;
+  }
+  return 0;
+};
+
+/**
+ * 获取输入框需要的总底部空间
+ */
+export const getInputTotalBottomSpace = (): number => {
+  if (Platform.OS === 'android') {
+    return getInputBottomPadding() + getInputContainerBottomPadding() + getBottomNavigationHeight();
+  }
+  return getInputBottomPadding() + getInputContainerBottomPadding();
 }; 

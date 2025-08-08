@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   Keyboard,
+  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -116,7 +117,10 @@ export default function WeChatInput({
             ref={inputRef}
             style={[styles.textInput, isFocused && styles.textInputFocused]}
             value={value}
-            onChangeText={onChangeText}
+            onChangeText={(text) => {
+              console.log('📝 输入框文本变化:', text);
+              onChangeText(text);
+            }}
             placeholder={placeholder}
             placeholderTextColor="#999"
             multiline
@@ -129,15 +133,19 @@ export default function WeChatInput({
             }}
             onFocus={() => {
               setIsFocused(true);
-              console.log('输入框获得焦点');
+              console.log('🎯 输入框获得焦点');
             }}
-            onBlur={() => setIsFocused(false)}
+            onBlur={() => {
+              setIsFocused(false);
+              console.log('🔍 输入框失去焦点');
+            }}
             editable={!showVoiceButton}
             keyboardType="default"
             returnKeyType="default"
             blurOnSubmit={false}
             enablesReturnKeyAutomatically={true}
             textAlignVertical="top"
+            autoFocus={false}
           />
         </View>
 
@@ -217,9 +225,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     // borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
-    paddingBottom: 0, // 由父组件控制底部间距
-    // zIndex: 1000,
-    // elevation: 10,
+    paddingBottom: Platform.OS === 'android' ? 16 : 8, // 为Android设备提供更多底部间距
+    zIndex: 1000,
     width: '100%',
   },
   inputArea: {
@@ -237,19 +244,11 @@ const styles = StyleSheet.create({
     minHeight: 36,
     maxHeight: 150,
     marginRight: 8,
-    // shadowColor: '#000',
-    // shadowOffset: {
-    //   width: 0,
-    //   height: 1,
-    // },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 2,
-    // elevation: 2,
   },
   textInput: {
     flex: 1,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 16,
     lineHeight: 22,
     textAlignVertical: 'top',

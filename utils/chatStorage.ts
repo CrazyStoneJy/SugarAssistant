@@ -278,4 +278,44 @@ export async function getAllSessionsOcrData(): Promise<Array<{text: string, time
     console.error('获取所有OCR数据失败:', error);
     return [];
   }
+}
+
+/**
+ * 删除特定的OCR数据
+ */
+export async function deleteOcrData(text: string, timestamp: Date): Promise<void> {
+  try {
+    const sessions = await getChatSessions();
+    let hasChanges = false;
+    
+    // 遍历所有会话，找到匹配的OCR数据并删除
+    sessions.forEach(session => {
+      session.messages.forEach(msg => {
+        if (msg.ocrData && 
+            msg.ocrData.recognizedText === text && 
+            msg.ocrData.timestamp.getTime() === timestamp.getTime()) {
+          // 删除OCR数据，但保留消息
+          delete msg.ocrData;
+          hasChanges = true;
+        }
+      });
+    });
+    
+    // 如果有变化，保存更新后的会话
+    if (hasChanges) {
+      await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(sessions));
+      
+      // 如果当前会话也在其中，更新当前会话
+      const currentSession = await getCurrentChatSession();
+      if (currentSession) {
+        const updatedCurrentSession = sessions.find(s => s.id === currentSession.id);
+        if (updatedCurrentSession) {
+          await AsyncStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify(updatedCurrentSession));
+        }
+      }
+    }
+  } catch (error) {
+    console.error('删除OCR数据失败:', error);
+    throw new Error('删除OCR数据失败');
+  }
 } 

@@ -83,7 +83,7 @@ export async function recognizeTextWithTencentOcr(imageUri: string): Promise<{re
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': '__root_domain_v=.tencent.com; _qddaz=QD.689444619199555; qcommunity_identify_id=mOohlGiW3EHymI5CDthM3; qcloud_from=qcloud.google.seo-1752455251575; qcstats_seo_keywords=%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF-%E7%A7%BB%E5%8A%A8%E5%BC%80%E5%8F%91-android%2C%E5%85%B6%E4%BB%96-%E7%A9%BA%E7%B1%BB-%E9%9D%A2%E8%AF%95%2C%E5%85%B6%E4%BB%96-; qcloud_uid=E8e_GsrZZZ2f; ewpUid=d1c46f31-d69a-4f52-a8e0-0aefb931becc; _gcl_au=1.1.2062934077.1752455253; language=zh; qcmainCSRFToken=RghH4WTbkn1w; qcloud_visitId=3ed1a845c52fb03e78373640bae6ffce; loginType=wx; qcloud_outsite_refer=https://open.weixin.qq.com; intl=1; uin=o100014519541; tinyid=144115218050952294; skey=XOii6t7F*YBC6rFv83lupVN02HkkHD2p49a*NKcVK*E_; lastLoginIdentity=7badfb4991e2816031f8dd741748b39f; refreshSession=1; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%22100014519541%22%2C%22first_id%22%3A%221980679067d2cc-0c00fbb73d085b8-17525636-2073600-1980679067e2391%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E7%A4%BE%E4%BA%A4%E7%BD%91%E7%AB%99%E6%B5%81%E9%87%8F%22%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTk4MDY3OTA2N2QyY2MtMGMwMGZiYjczZDA4NWI4LTE3NTI1NjM2LTIwNzM2MDAtMTk4MDY3OTA2N2UyMzkxIiwiJGlkZW50aXR5X2xvZ2luX2lkIjoiMTAwMDE0NTE5NTQxIn0%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%22100014519541%22%7D%7D; qcstats_ouin-100014519541=100014519541; qcstats_utype-100014519541=0; saas_synced_session=100014519541%7CXOii6t7F*YBC6rFv83lupVN02HkkHD2p49a*NKcVK*E_; tgw_l7_route=504e8e885a872e3fffd02462d84887bc; from=27778; trafficParams=***%24%3Btimestamp%3D1754534516976%3Bfrom_type%3Dserver%3Btrack%3D063a414f-b6af-4ccc-ba60-6385c83df721%3B%24***; opc_xsrf=319527f9040eca93313458142717e905%7C1754534517; nick=crazystone13753251592%40gmail.com',
+        'Cookie': '__root_domain_v=.tencent.com; _qddaz=QD.689444619199555; qcommunity_identify_id=mOohlGiW3EHymI5CDthM3; qcstats_seo_keywords=%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF-%E7%A7%BB%E5%8A%A8%E5%BC%80%E5%8F%91-android%2C%E5%85%B6%E4%BB%96-%E7%A9%BA%E7%B1%BB-%E9%9D%A2%E8%AF%95%2C%E5%85%B6%E4%BB%96-; qcloud_uid=E8e_GsrZZZ2f; ewpUid=d1c46f31-d69a-4f52-a8e0-0aefb931becc; _gcl_au=1.1.2062934077.1752455253; language=zh; qcmainCSRFToken=RghH4WTbkn1w; qcloud_visitId=3ed1a845c52fb03e78373640bae6ffce; loginType=wx; lastLoginIdentity=7badfb4991e2816031f8dd741748b39f; refreshSession=1; qcstats_ouin-100014519541=100014519541; qcstats_utype-100014519541=0; saas_synced_session=100014519541%7CXOii6t7F*YBC6rFv83lupVN02HkkHD2p49a*NKcVK*E_; from=27778; opc_xsrf=319527f9040eca93313458142717e905%7C1754534517; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%22100014519541%22%2C%22first_id%22%3A%221980679067d2cc-0c00fbb73d085b8-17525636-2073600-1980679067e2391%22%2C%22props%22%3A%7B%22%24latest_traffic_source_type%22%3A%22%E8%87%AA%E7%84%B6%E6%90%9C%E7%B4%A2%E6%B5%81%E9%87%8F%22%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTk4MDY3OTA2N2QyY2MtMGMwMGZiYjczZDA4NWI4LTE3NTI1NjM2LTIwNzM2MDAtMTk4MDY3OTA2N2UyMzkxIiwiJGlkZW50aXR5X2xvZ2luX2lkIjoiMTAwMDE0NTE5NTQxIn0%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%22100014519541%22%7D%7D; intl=; tgw_l7_route=4255cc1f3a56e20f9618d82a8adbfe42; qcloud_outsite_refer=https://ocrdemo.cloud.tencent.com; qcloud_from=qcloud.inside.group-1754612378142; trafficParams=***%24%3Btimestamp%3D1754612402878%3Bfrom_type%3Dserver%3Btrack%3D9aeba74d-04a9-44b5-af74-7095c72baf98%3B%24***; uin=o100014519541; tinyid=144115218050952294; skey=oaXnALrKgu3MxnrFP5XkiSav5BHTUXHZbCGw0uWs3-w_',
         'Referer': 'https://ocrdemo.cloud.tencent.com/',
         'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36',
       },
@@ -480,5 +480,45 @@ export async function clearStoredAbnormalIndicators(): Promise<void> {
     console.log('🗑️ 异常指标数据已清除');
   } catch (error) {
     console.error('❌ 清除异常指标数据失败:', error);
+  }
+}
+
+/**
+ * 删除特定的异常指标数据
+ */
+export async function deleteAbnormalIndicators(ocrText: string, timestamp: Date): Promise<void> {
+  try {
+    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+    
+    // 获取现有的异常指标数据
+    const dataJson = await AsyncStorage.default.getItem('abnormal_indicators');
+    if (!dataJson) {
+      return; // 没有数据，直接返回
+    }
+    
+    const existingData = JSON.parse(dataJson);
+    
+    // 过滤掉与OCR文本相关的异常数据
+    const filteredData = existingData.filter((item: any) => {
+      // 如果异常数据来源于OCR，且时间戳匹配，则删除
+      if (item.source === 'ocr') {
+        const itemTimestamp = new Date(item.timestamp);
+        // 检查时间戳是否在合理范围内（允许1分钟的误差）
+        const timeDiff = Math.abs(itemTimestamp.getTime() - timestamp.getTime());
+        return timeDiff > 60000; // 保留时间差超过1分钟的数据
+      }
+      return true; // 保留非OCR来源的数据
+    });
+    
+    // 保存过滤后的数据
+    await AsyncStorage.default.setItem('abnormal_indicators', JSON.stringify(filteredData));
+    
+    const deletedCount = existingData.length - filteredData.length;
+    if (deletedCount > 0) {
+      console.log(`🗑️ 删除了 ${deletedCount} 条相关的异常指标数据`);
+    }
+  } catch (error) {
+    console.error('❌ 删除异常指标数据失败:', error);
+    throw new Error('删除异常指标数据失败');
   }
 } 

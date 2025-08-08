@@ -2,7 +2,8 @@ import CustomTransition from '@/components/CustomTransition';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
-import { getAllSessionsOcrData } from '@/utils/chatStorage';
+import { deleteOcrData, getAllSessionsOcrData } from '@/utils/chatStorage';
+import { deleteAbnormalIndicators } from '@/utils/tencentOcrApi';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -71,17 +72,38 @@ export default function OcrDataScreen() {
     }
   };
 
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = async (itemId: string) => {
     Alert.alert(
       '确认删除',
-      '确定要删除这条OCR数据吗？',
+      '确定要删除这条OCR数据吗？删除后将同时清除相关的异常指标数据。',
       [
         { text: '取消', style: 'cancel' },
         { 
           text: '删除', 
           style: 'destructive',
-          onPress: () => {
-            setOcrDataList(prev => prev.filter(item => item.id !== itemId));
+          onPress: async () => {
+            try {
+              // 找到要删除的项目
+              const itemToDelete = ocrDataList.find(item => item.id === itemId);
+              if (!itemToDelete) {
+                console.error('未找到要删除的OCR数据');
+                return;
+              }
+              
+              // 从存储中删除OCR数据
+              await deleteOcrData(itemToDelete.text, itemToDelete.timestamp);
+              
+              // 从存储中删除相关的异常指标数据
+              await deleteAbnormalIndicators(itemToDelete.text, itemToDelete.timestamp);
+              
+              // 从本地状态中删除
+              setOcrDataList(prev => prev.filter(item => item.id !== itemId));
+              
+              console.log('✅ OCR数据和相关异常指标数据删除成功');
+            } catch (error) {
+              console.error('删除OCR数据失败:', error);
+              Alert.alert('错误', '删除OCR数据失败，请重试');
+            }
           }
         }
       ]
@@ -129,9 +151,6 @@ export default function OcrDataScreen() {
       <Text style={styles.emptySubtitle}>
         所有会话中都没有OCR识别数据
       </Text>
-      <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/chat')}>
-        <Text style={styles.uploadButtonText}>去上传图片</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -274,6 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    minHeight: 400, // 确保有足够的高度来居中显示
   },
   emptyTitle: {
     fontSize: 18,
@@ -287,18 +307,6 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 24,
-  },
-  uploadButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  uploadButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   placeholder: {
     width: 40, // Adjust as needed for spacing
