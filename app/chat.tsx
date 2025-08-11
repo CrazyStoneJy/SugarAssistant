@@ -13,15 +13,15 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface Message {
@@ -295,7 +295,8 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            ocrTexts
+            ocrTexts,
+            true // 包含血糖数据
           );
         } catch (error) {
           console.error('DeepSeek API调用失败:', error);
@@ -498,7 +499,8 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            storedAbnormalData.map(item => item.text) // 传递历史异常数据
+            storedAbnormalData.map(item => item.text), // 传递历史异常数据
+            true // 包含血糖数据
           );
         } catch (error) {
           console.error('DeepSeek API调用失败:', error);
@@ -647,6 +649,12 @@ export default function ChatScreen() {
               <TouchableOpacity onPress={() => router.push('/ocr-data')} style={styles.ocrDataButton}>
                 <Ionicons name="document-text-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/diabetes-education' as any)} style={styles.educationButton}>
+                <Ionicons name="medical-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/blood-sugar-record' as any)} style={styles.bloodSugarButton}>
+                <Ionicons name="fitness-outline" size={20} color="#007AFF" />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
                 <Ionicons name="list-outline" size={20} color="#007AFF" />
               </TouchableOpacity>
@@ -746,6 +754,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   ocrDataButton: {
+    padding: 8,
+  },
+  educationButton: {
+    padding: 8,
+  },
+  bloodSugarButton: {
     padding: 8,
   },
   sessionsButton: {

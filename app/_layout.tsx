@@ -101,6 +101,24 @@ export default function RootLayout() {
             presentation: 'card',
           }} 
         />
+        <Stack.Screen 
+          name="diabetes-education" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            presentation: 'card',
+          }} 
+        />
+        <Stack.Screen 
+          name="blood-sugar-record" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            presentation: 'card',
+          }} 
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar 

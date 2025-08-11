@@ -1,4 +1,5 @@
 import { getDeepSeekAPIKey, getDeepSeekBaseURL, getDeepSeekModel, isEnvConfigured } from '@/config/env';
+import { formatBloodSugarRecordsForPrompt, getRecentBloodSugarRecords } from './bloodSugarData';
 
 interface DeepSeekMessage {
   role: 'user' | 'assistant' | 'system';
@@ -346,7 +347,8 @@ export function autoInitAPI(): boolean {
 export async function sendMessageToDeepSeek(
   userMessage: string,
   conversationHistory: DeepSeekMessage[] = [],
-  ocrData: string[] = []
+  ocrData: string[] = [],
+  includeBloodSugarData: boolean = true
 ): Promise<string> {
   if (!deepseekAPI) {
     // 尝试自动初始化
@@ -360,7 +362,7 @@ export async function sendMessageToDeepSeek(
   }
 
   try {
-    // 构建包含异常指标OCR数据的system prompt
+    // 构建包含异常指标OCR数据和血糖数据的system prompt
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
     
     if (ocrData.length > 0) {
@@ -373,6 +375,21 @@ export async function sendMessageToDeepSeek(
         console.log("异常指标数据已添加到system prompt:", abnormalData);
       } else {
         console.log("未发现异常指标数据，使用默认system prompt");
+      }
+    }
+
+    // 添加血糖记录数据
+    if (includeBloodSugarData) {
+      try {
+        const bloodSugarRecords = await getRecentBloodSugarRecords(7); // 获取最近7天的记录
+        if (bloodSugarRecords.length > 0) {
+          const bloodSugarContext = formatBloodSugarRecordsForPrompt(bloodSugarRecords);
+          systemPrompt += bloodSugarContext;
+          console.log("血糖记录数据已添加到system prompt:", bloodSugarRecords.length, "条");
+        }
+      } catch (error) {
+        console.error('获取血糖记录数据失败:', error);
+        // 即使获取失败也不影响主要功能
       }
     }
 
@@ -413,7 +430,8 @@ export async function sendMessageToDeepSeekStream(
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string) => void,
   onError: (error: Error) => void,
-  historicalAbnormalData: string[] = []
+  historicalAbnormalData: string[] = [],
+  includeBloodSugarData: boolean = true
 ): Promise<void> {
   if (!deepseekAPI) {
     // 尝试自动初始化
@@ -427,7 +445,7 @@ export async function sendMessageToDeepSeekStream(
   }
 
   try {
-    // 构建包含异常指标OCR数据的system prompt
+    // 构建包含异常指标OCR数据和血糖数据的system prompt
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
     
     // 添加历史异常指标数据
@@ -435,6 +453,21 @@ export async function sendMessageToDeepSeekStream(
       const historicalContext = `\n\n用户历史异常指标数据：\n${historicalAbnormalData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些历史异常指标数据，结合营养师的专业知识，为用户提供针对性的饮食建议和血糖控制建议。重点关注异常指标的改善方案。`;
       systemPrompt += historicalContext;
       console.log("历史异常指标数据已添加到system prompt:", historicalAbnormalData.length, "条");
+    }
+    
+    // 添加血糖记录数据
+    if (includeBloodSugarData) {
+      try {
+        const bloodSugarRecords = await getRecentBloodSugarRecords(7); // 获取最近7天的记录
+        if (bloodSugarRecords.length > 0) {
+          const bloodSugarContext = formatBloodSugarRecordsForPrompt(bloodSugarRecords);
+          systemPrompt += bloodSugarContext;
+          console.log("血糖记录数据已添加到system prompt:", bloodSugarRecords.length, "条");
+        }
+      } catch (error) {
+        console.error('获取血糖记录数据失败:', error);
+        // 即使获取失败也不影响主要功能
+      }
     }
     
     console.log("systemPrompt", systemPrompt)
