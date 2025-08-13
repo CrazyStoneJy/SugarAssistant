@@ -3,7 +3,7 @@ import ChatMessage from '@/components/ChatMessage';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
-import { generateAIResponseWithOcrData } from '@/utils/aiResponse';
+import { generateSimpleAIResponse } from '@/utils/aiResponse';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
 import { recognizeTextWithTencentOcr } from '@/utils/tencentOcrApi';
@@ -198,12 +198,7 @@ export default function ChatScreen() {
       // 保存用户消息到存储
       await addMessageToCurrentSession(userMessage);
 
-      // 获取当前会话的OCR数据
-      const { getStoredAbnormalIndicators } = await import('@/utils/tencentOcrApi');
-      const ocrData = await getStoredAbnormalIndicators();
-      
-      // 将OCR数据转换为字符串数组
-      const ocrTexts = ocrData.map(item => item.text);
+
 
       // 生成AI回复
       let aiResponseText: string;
@@ -211,7 +206,6 @@ export default function ChatScreen() {
       if (isAPIAvailable && isAPIInitialized()) {
         // 使用DeepSeek API
         console.log('🤖 使用DeepSeek API生成回复...');
-        console.log('📄 当前会话OCR数据:', ocrTexts);
         
         // 构建对话历史 - 只使用最后10条消息
         const conversationHistory = messages
@@ -295,7 +289,6 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            ocrTexts,
             true // 包含血糖数据
           );
         } catch (error) {
@@ -320,10 +313,9 @@ export default function ChatScreen() {
       } else {
         // 使用本地AI回复
         console.log('🤖 使用本地AI生成回复...');
-        console.log('📄 当前会话OCR数据:', ocrTexts);
         
-        // 使用包含OCR数据的AI回复函数
-        aiResponseText = generateAIResponseWithOcrData(text.trim(), ocrTexts);
+        // 使用本地AI回复函数
+        aiResponseText = generateSimpleAIResponse(text.trim());
         
         // 添加AI回复消息
         const aiMessage: Message = {
@@ -420,10 +412,6 @@ export default function ChatScreen() {
       
       // 生成AI回复
       if (recognizedText.trim()) {
-        // 获取所有持久化的异常指标数据
-        const { getStoredAbnormalIndicators } = await import('@/utils/tencentOcrApi');
-        const storedAbnormalData = await getStoredAbnormalIndicators();
-        
         // 构建对话历史 - 只使用最后10条消息
         const conversationHistory = messages
           .slice(-10) // 只取最后10条消息
@@ -499,7 +487,6 @@ export default function ChatScreen() {
               };
               addMessageToCurrentSession(errorMessage);
             },
-            storedAbnormalData.map(item => item.text), // 传递历史异常数据
             true // 包含血糖数据
           );
         } catch (error) {

@@ -5,17 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
 
 const { width } = Dimensions.get('window');
 
@@ -164,6 +165,187 @@ export default function BloodSugarRecordScreen() {
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+
+  const generateChartData = () => {
+    if (records.length === 0) return null;
+
+    // 获取最近7天的数据
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 6);
+
+    const recentRecords = records.filter(record => 
+      record.timestamp >= startDate && record.timestamp <= endDate
+    );
+
+    if (recentRecords.length === 0) return null;
+
+    // 按日期分组
+    const dailyData: { [key: string]: { before: number[], after: number[] } } = {};
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      // 使用 month.day 格式，例如 "1.15", "1.16"
+      const month = date.getMonth() + 1; // getMonth() 返回 0-11，所以 +1
+      const day = date.getDate();
+      const dateKey = `${month}.${day}`;
+      dailyData[dateKey] = { before: [], after: [] };
+    }
+
+    // 填充数据
+    recentRecords.forEach(record => {
+      // 使用相同的 month.day 格式
+      const month = record.timestamp.getMonth() + 1;
+      const day = record.timestamp.getDate();
+      const dateKey = `${month}.${day}`;
+      
+      if (dailyData[dateKey]) {
+        if (record.mealType.includes('before')) {
+          dailyData[dateKey].before.push(record.bloodSugar);
+        } else if (record.mealType.includes('after')) {
+          dailyData[dateKey].after.push(record.bloodSugar);
+        }
+      }
+    });
+
+    // 计算每日平均值，如果没有数据则设为0
+    const labels = Object.keys(dailyData);
+    const beforeMealData = labels.map(date => {
+      const values = dailyData[date].before;
+      return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    });
+    const afterMealData = labels.map(date => {
+      const values = dailyData[date].after;
+      return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    });
+
+    // 计算Y轴范围，基于真实血糖范围
+    const allValues = [...beforeMealData, ...afterMealData].filter(val => val > 0);
+    const minValue = allValues.length > 0 ? Math.max(2.0, Math.floor(Math.min(...allValues) - 1)) : 2.0;
+    const maxValue = allValues.length > 0 ? Math.min(20.0, Math.ceil(Math.max(...allValues) + 2)) : 15.0;
+
+    return {
+      labels,
+      datasets: [
+        {
+          data: beforeMealData,
+          color: (opacity = 1) => `rgba(10, 126, 164, ${opacity})`, // 餐前 - 蓝色
+          strokeWidth: 2,
+        },
+        {
+          data: afterMealData,
+          color: (opacity = 1) => `rgba(231, 76, 60, ${opacity})`, // 餐后 - 红色
+          strokeWidth: 2,
+        }
+      ]
+    };
+  };
+
+  const renderTrendChart = () => {
+    const chartData = generateChartData();
+    
+    if (!chartData) {
+      return (
+        <View style={styles.chartContainer}>
+          <View style={styles.chartHeader}>
+            <Ionicons name="trending-up" size={24} color="#0a7ea4" />
+            <ThemedText style={styles.chartTitle}>血糖趋势</ThemedText>
+          </View>
+          <View style={styles.noDataContainer}>
+            <Ionicons name="analytics-outline" size={48} color="#ccc" />
+            <ThemedText style={styles.noDataText}>暂无足够数据</ThemedText>
+            <ThemedText style={styles.noDataSubtext}>记录更多血糖数据来查看趋势</ThemedText>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.chartContainer}>
+        <View style={styles.chartHeader}>
+          <Ionicons name="trending-up" size={24} color="#0a7ea4" />
+          <ThemedText style={styles.chartTitle}>血糖趋势 (最近7天)</ThemedText>
+        </View>
+        
+        <LineChart
+          data={chartData}
+          width={width - 40 - 20}
+          height={220}
+          chartConfig={{
+            backgroundColor: '#ffffff',
+            backgroundGradientFrom: '#ffffff',
+            backgroundGradientTo: '#ffffff',
+            decimalPlaces: 1,
+            color: (opacity = 1) => `rgba(10, 126, 164, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(108, 112, 118, ${opacity})`,
+            style: {
+              borderRadius: 16,
+            },
+            propsForDots: {
+              r: '4',
+              strokeWidth: '2',
+              stroke: '#ffffff',
+            },
+            // 设置Y轴标签格式
+            formatYLabel: (value) => `${parseFloat(value).toFixed(1)}`,
+            // 设置背景网格线样式
+            propsForBackgroundLines: {
+              strokeDasharray: '',
+              strokeWidth: 0.5,
+              stroke: 'rgba(108, 112, 118, 0.2)',
+            },
+          }}
+          bezier
+          style={styles.chart}
+          withDots={true}
+          withShadow={false}
+          withInnerLines={true}
+          withOuterLines={true}
+          withVerticalLines={false}
+          withHorizontalLines={true}
+          withVerticalLabels={true}
+          withHorizontalLabels={true}
+          fromZero={false}
+          yAxisSuffix=""
+          formatXLabel={(xValue) => {
+            return xValue;
+          }}
+          // 设置Y轴范围和间隔
+          yAxisInterval={1}
+          segments={4}
+          // 修复图表偏移问题
+          horizontalLabelRotation={0}
+          verticalLabelRotation={0}
+          // 设置图表边距，修复偏移
+          getDotColor={(dataPoint, index) => {
+            if (dataPoint === 0) return 'transparent'; // 隐藏0值点
+            return dataPoint.datasetIndex === 0 ? '#0a7ea4' : '#e74c3c';
+          }}
+        />
+        
+        {/* X轴名称 */}
+        <ThemedText style={styles.axisLabel}>日期</ThemedText>
+        
+        {/* Y轴名称 */}
+        <View style={styles.yAxisLabelContainer}>
+          <ThemedText style={[styles.axisLabel, styles.yAxisLabel]}>血糖值 (mmol/L)</ThemedText>
+        </View>
+        
+        <View style={styles.chartLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: '#0a7ea4' }]} />
+            <ThemedText style={styles.legendText}>餐前血糖</ThemedText>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: '#e74c3c' }]} />
+            <ThemedText style={styles.legendText}>餐后血糖</ThemedText>
+          </View>
+        </View>
+      </View>
+    );
   };
 
   const renderRecordItem = (record: BloodSugarRecord) => {
@@ -393,25 +575,30 @@ export default function BloodSugarRecordScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 统计信息 */}
-      {renderStats()}
-
       {/* 记录列表 */}
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled={true}
       >
         {records.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="medical-outline" size={64} color="#ccc" />
             <ThemedText style={styles.emptyTitle}>暂无血糖记录</ThemedText>
             <ThemedText style={styles.emptySubtitle}>
-              点击右上角"+"按钮添加第一条血糖记录
+              点击右上角&ldquo;+&rdquo;按钮添加第一条血糖记录
             </ThemedText>
           </View>
         ) : (
-          records.map(renderRecordItem)
+          <>
+            {/* 统计信息作为列表第一项 */}
+            {renderStats()}
+            {/* 血糖趋势图作为列表第二项 */}
+            {renderTrendChart()}
+            {/* 血糖记录列表 */}
+            {records.map(renderRecordItem)}
+          </>
         )}
       </ScrollView>
 
@@ -451,19 +638,87 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#f8f9fa',
   },
-  statsContainer: {
-    margin: 20,
+  chartContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
     padding: 20,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#11181C',
+    marginLeft: 8,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 24,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 14,
+    color: '#687076',
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  noDataText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#999',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noDataSubtext: {
+    fontSize: 14,
+    color: '#ccc',
+    textAlign: 'center',
+  },
+  statsContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statsTitle: {
     fontSize: 16,
@@ -492,6 +747,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginHorizontal: -8,
   },
   scrollContent: {
     paddingBottom: 30,
@@ -675,7 +931,6 @@ const styles = StyleSheet.create({
   mealTypeButtonText: {
     fontSize: 14,
     color: '#687076',
-    marginLeft: 4,
   },
   mealTypeButtonTextSelected: {
     color: '#fff',
@@ -703,5 +958,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // 轴标签样式
+  axisLabel: {
+    fontSize: 14,
+    color: '#687076',
+    textAlign: 'center',
+    marginTop: 0,
+    fontWeight: '500',
+  },
+  yAxisLabelContainer: {
+    position: 'absolute',
+    left: 0,
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+  },
+  yAxisLabel: {
+    transform: [{ rotate: '-90deg' }],
+    textAlign: 'center',
+    width: 80,
   },
 });

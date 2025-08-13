@@ -430,7 +430,6 @@ export async function sendMessageToDeepSeekStream(
   onChunk: (chunk: string) => void,
   onComplete: (fullResponse: string) => void,
   onError: (error: Error) => void,
-  historicalAbnormalData: string[] = [],
   includeBloodSugarData: boolean = true
 ): Promise<void> {
   if (!deepseekAPI) {
@@ -445,15 +444,8 @@ export async function sendMessageToDeepSeekStream(
   }
 
   try {
-    // 构建包含异常指标OCR数据和血糖数据的system prompt
+    // 构建包含血糖数据的system prompt
     let systemPrompt = DEFAULT_SYSTEM_PROMPT;
-    
-    // 添加历史异常指标数据
-    if (historicalAbnormalData.length > 0) {
-      const historicalContext = `\n\n用户历史异常指标数据：\n${historicalAbnormalData.map((text, index) => `${index + 1}. ${text}`).join('\n')}\n\n请基于这些历史异常指标数据，结合营养师的专业知识，为用户提供针对性的饮食建议和血糖控制建议。重点关注异常指标的改善方案。`;
-      systemPrompt += historicalContext;
-      console.log("历史异常指标数据已添加到system prompt:", historicalAbnormalData.length, "条");
-    }
     
     // 添加血糖记录数据
     if (includeBloodSugarData) {
