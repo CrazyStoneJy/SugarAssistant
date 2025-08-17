@@ -1,7 +1,6 @@
+import Header from '@/components/Header';
 import { ThemedText } from '@/components/ThemedText';
-import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Dimensions,
@@ -12,6 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +25,7 @@ interface EducationSection {
 
 export default function DiabetesEducationScreen() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['what-is-diabetes']));
+
 
   const educationData: EducationSection[] = [
     {
@@ -167,6 +168,8 @@ export default function DiabetesEducationScreen() {
     setExpandedSections(newExpanded);
   };
 
+
+
   const renderSection = (section: EducationSection) => {
     const isExpanded = expandedSections.has(section.id);
     
@@ -212,21 +215,15 @@ export default function DiabetesEducationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
-      {/* 头部 */}
-      <View style={[styles.header, { paddingTop: getStatusBarHeight() + 10 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0a7ea4" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>糖尿病科普</ThemedText>
-        <View style={styles.placeholder} />
-      </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        
+        {/* 顶部导航栏 */}
+        <Header
+          title="糖尿病科普"
+          showBackButton={true}
+        />
 
       {/* 简介卡片 */}
       <View style={styles.introCard}>
@@ -255,7 +252,10 @@ export default function DiabetesEducationScreen() {
           </ThemedText>
         </View>
       </ScrollView>
+
+
     </SafeAreaView>
+  </GestureHandlerRootView>
   );
 }
 
@@ -267,12 +267,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 15,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+  },
+  menuButton: {
+    padding: 8,
   },
   backButton: {
     padding: 8,

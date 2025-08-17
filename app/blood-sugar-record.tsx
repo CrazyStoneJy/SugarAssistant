@@ -1,22 +1,22 @@
+import Header from '@/components/Header';
 import { ThemedText } from '@/components/ThemedText';
-import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +42,7 @@ export default function BloodSugarRecordScreen() {
   const [notes, setNotes] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
 
   const mealTypeLabels = {
     'before-breakfast': '早餐前',
@@ -166,6 +167,8 @@ export default function BloodSugarRecordScreen() {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   };
+
+
 
 
   const generateChartData = () => {
@@ -553,27 +556,24 @@ export default function BloodSugarRecordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
-      {/* 头部 */}
-      <View style={[styles.header, { paddingTop: getStatusBarHeight() + 10 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0a7ea4" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>血糖记录</ThemedText>
-        <TouchableOpacity
-          style={styles.addButtonHeader}
-          onPress={() => setShowAddModal(true)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add" size={24} color="#0a7ea4" />
-        </TouchableOpacity>
-      </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        
+        {/* 顶部导航栏 */}
+        <Header
+          title="血糖记录"
+          showBackButton={true}
+          rightComponent={
+            <TouchableOpacity
+              style={styles.addButtonHeader}
+              onPress={() => setShowAddModal(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add" size={24} color="#0a7ea4" />
+            </TouchableOpacity>
+          }
+        />
 
       {/* 记录列表 */}
       <ScrollView 
@@ -604,7 +604,10 @@ export default function BloodSugarRecordScreen() {
 
       {/* 添加记录模态框 */}
       {renderAddModal()}
+
+
     </SafeAreaView>
+  </GestureHandlerRootView>
   );
 }
 
@@ -616,12 +619,19 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 15,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: 8,
+    marginRight: 8,
   },
   backButton: {
     padding: 8,

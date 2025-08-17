@@ -1,15 +1,16 @@
+import { INPUT_ANIMATION } from '@/constants/AnimationConfig';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Keyboard,
-  Platform,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Animated,
+    Keyboard,
+    Platform,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { ThemedText } from './ThemedText';
 
@@ -36,7 +37,7 @@ export default function WeChatInput({
   const [showVoiceButton, setShowVoiceButton] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useMemo(() => new Animated.Value(0), []);
 
   const handleSend = () => {
     if (value.trim() && !disabled) {
@@ -46,13 +47,14 @@ export default function WeChatInput({
     }
   };
 
-  const toggleVoiceButton = () => {
+  const toggleVoiceButton = useCallback(() => {
     const newShowVoice = !showVoiceButton;
     setShowVoiceButton(newShowVoice);
     
-    Animated.timing(slideAnim, {
-      toValue: newShowVoice ? 1 : 0,
-      duration: 200,
+    // 使用配置化的快速动画
+    Animated.spring(slideAnim, {
+      ...INPUT_ANIMATION.SLIDE,
+      toValue: newShowVoice ? 1 : 0, // 覆盖配置中的 toValue
       useNativeDriver: true,
     }).start();
 
@@ -61,19 +63,20 @@ export default function WeChatInput({
     } else {
       inputRef.current?.focus();
     }
-  };
+  }, [showVoiceButton, slideAnim]);
 
-  const handleVoiceResult = (text: string) => {
+  const handleVoiceResult = useCallback((text: string) => {
     setIsProcessingVoice(true);
     onVoiceResult(text);
     setShowVoiceButton(false);
     setIsProcessingVoice(false);
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 200,
+    
+    // 使用配置化的快速动画
+    Animated.spring(slideAnim, {
+      ...INPUT_ANIMATION.RESET,
       useNativeDriver: true,
     }).start();
-  };
+  }, [onVoiceResult, slideAnim]);
 
   // 选择图片
   const pickImage = async () => {

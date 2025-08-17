@@ -1,5 +1,5 @@
 import CustomTransition from '@/components/CustomTransition';
-import { ThemedText } from '@/components/ThemedText';
+import Header from '@/components/Header';
 import { ThemedView } from '@/components/ThemedView';
 import foodsJson from '@/data/foods.json';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
@@ -7,16 +7,18 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface FoodItem {
   id: string;
@@ -30,6 +32,8 @@ interface FoodItem {
 // 排序类型
 type SortType = 'default' | 'gi-asc' | 'gi-desc' | 'sugar-asc' | 'sugar-desc';
 
+const { width: screenWidth } = Dimensions.get('window');
+
 // 从JSON文件导入食物数据
 const foodsData: FoodItem[] = foodsJson.foods;
 
@@ -38,6 +42,7 @@ export default function FoodsScreen() {
   const [sortType, setSortType] = useState<SortType>('default');
   const [showGiDropdown, setShowGiDropdown] = useState(false);
   const [showSugarDropdown, setShowSugarDropdown] = useState(false);
+
   
   // 按分类筛选和排序
   const sortedFoods = useMemo(() => {
@@ -169,6 +174,8 @@ export default function FoodsScreen() {
     setShowSugarDropdown(false);
   };
 
+
+
   const getSortButtonText = () => {
     switch (sortType) {
       case 'gi-asc': return '升糖指数 ↑';
@@ -190,24 +197,25 @@ export default function FoodsScreen() {
   );
 
   return (
-    <CustomTransition isVisible={true} animationType="slideUp" duration={400}>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="transparent" 
-          translucent={Platform.OS === 'android'}
-        />
-        <ThemedView style={styles.container}>
-          {/* 顶部导航栏 */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>食物库</ThemedText>
-            <TouchableOpacity onPress={showInfoDialog} style={styles.infoButton}>
-              <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
-          </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <CustomTransition isVisible={true} animationType="slideUp" duration={400}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar 
+            barStyle="dark-content" 
+            backgroundColor="transparent" 
+            translucent={Platform.OS === 'android'}
+          />
+          <ThemedView style={styles.container}>
+            {/* 顶部导航栏 */}
+            <Header
+              title="食物库"
+              showBackButton={true}
+              rightComponent={
+                <TouchableOpacity onPress={showInfoDialog} style={styles.infoButton}>
+                  <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
+                </TouchableOpacity>
+              }
+            />
 
           {/* 分类筛选 */}
           <View style={styles.categoryContainer}>
@@ -329,9 +337,12 @@ export default function FoodsScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.foodList}
           />
+
+
         </ThemedView>
       </SafeAreaView>
     </CustomTransition>
+  </GestureHandlerRootView>
   );
 }
 
@@ -346,13 +357,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: 8,
+    marginRight: 8,
   },
   backButton: {
     padding: 8,

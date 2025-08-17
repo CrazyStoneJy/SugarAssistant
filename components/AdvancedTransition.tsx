@@ -29,9 +29,10 @@ export default function AdvancedTransition({
   enableGesture = false,
   gestureDirection = 'horizontal',
 }: AdvancedTransitionProps) {
-  const animatedValue = React.useRef(new Animated.Value(0)).current;
-  const panGesture = React.useRef(new Animated.Value(0)).current;
-  const gestureState = React.useRef(new Animated.Value(State.UNDETERMINED)).current;
+  // 使用useMemo来延迟创建Animated.Value，避免在渲染过程中创建
+  const animatedValue = React.useMemo(() => new Animated.Value(0), []);
+  const panGesture = React.useMemo(() => new Animated.Value(0), []);
+  const gestureState = React.useMemo(() => new Animated.Value(State.UNDETERMINED), []);
 
   React.useEffect(() => {
     const getEasing = () => {
@@ -47,13 +48,30 @@ export default function AdvancedTransition({
       }
     };
 
-    const animation = Animated.timing(animatedValue, {
-      toValue: isVisible ? 1 : 0,
-      duration,
-      delay,
-      easing: getEasing(),
-      useNativeDriver: true,
-    });
+    // 根据动画类型选择最优的动画配置
+    let animation;
+    
+    if (animationType === 'fade' || animationType === 'scale') {
+      // 淡入淡出和缩放使用更快的 timing 动画
+      animation = Animated.timing(animatedValue, {
+        toValue: isVisible ? 1 : 0,
+        duration: Math.min(duration, 200), // 限制最大时长
+        delay: Math.min(delay, 50),        // 限制最大延迟
+        easing: getEasing(),
+        useNativeDriver: true,
+      });
+    } else {
+      // 滑动动画使用 spring 动画，更自然流畅
+      animation = Animated.spring(animatedValue, {
+        toValue: isVisible ? 1 : 0,
+        useNativeDriver: true,
+        tension: 300,        // 高张力，快速响应
+        friction: 8,         // 适中的摩擦力
+        velocity: 1.0,       // 高初始速度
+        restDisplacementThreshold: 0.005, // 更精确的停止阈值
+        restSpeedThreshold: 0.005,        // 更精确的停止速度阈值
+      });
+    }
 
     animation.start(({ finished }) => {
       if (finished && onAnimationComplete) {

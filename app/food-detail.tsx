@@ -1,4 +1,5 @@
 import CustomTransition from '@/components/CustomTransition';
+import Header from '@/components/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import foodDetailsJson from '@/data/food-details.json';
@@ -7,14 +8,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 interface FoodDetail {
@@ -81,14 +82,11 @@ export default function FoodDetailScreen() {
           translucent={Platform.OS === 'android'}
         />
         <ThemedView style={styles.container}>
-          {/* 顶部导航 */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>食物详情</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
+          {/* 顶部导航栏 */}
+          <Header
+            title="食物详情"
+            showBackButton={true}
+          />
 
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             {/* 食物基本信息 */}

@@ -1,5 +1,5 @@
 import CustomTransition from '@/components/CustomTransition';
-import { ThemedText } from '@/components/ThemedText';
+import Header from '@/components/Header';
 import { ThemedView } from '@/components/ThemedView';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { deleteOcrData, getAllSessionsOcrData } from '@/utils/chatStorage';
@@ -8,17 +8,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface OcrDataItem {
   id: string;
@@ -26,6 +28,8 @@ interface OcrDataItem {
   timestamp: Date;
   sessionId?: string;
 }
+
+const { width: screenWidth } = Dimensions.get('window');
 
 // 全局计数器，确保ID唯一性
 let ocrDataIdCounter = 0;
@@ -41,6 +45,7 @@ const generateUniqueOcrDataId = () => {
 export default function OcrDataScreen() {
   const [ocrDataList, setOcrDataList] = useState<OcrDataItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
 
   useEffect(() => {
     loadOcrData();
@@ -121,6 +126,8 @@ export default function OcrDataScreen() {
     });
   };
 
+
+
   const renderOcrItem = ({ item }: { item: OcrDataItem }) => (
     <TouchableOpacity 
       style={styles.ocrItem}
@@ -155,22 +162,20 @@ export default function OcrDataScreen() {
   );
 
   return (
-    <CustomTransition isVisible={true} animationType="slide" duration={350}>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="transparent" 
-          translucent={Platform.OS === 'android'}
-        />
-        <ThemedView style={styles.container}>
-          {/* 顶部导航栏 */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>OCR数据列表</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <CustomTransition isVisible={true} animationType="slide" duration={350}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar 
+            barStyle="dark-content" 
+            backgroundColor="transparent" 
+            translucent={Platform.OS === 'android'}
+          />
+          <ThemedView style={styles.container}>
+            {/* 顶部导航栏 */}
+            <Header
+              title="OCR数据列表"
+              showBackButton={true}
+            />
 
           {/* 数据统计 */}
           <View style={styles.statsContainer}>
@@ -195,9 +200,12 @@ export default function OcrDataScreen() {
               ListEmptyComponent={renderEmptyState}
             />
           )}
+
+
         </ThemedView>
       </SafeAreaView>
     </CustomTransition>
+  </GestureHandlerRootView>
   );
 }
 
@@ -221,6 +229,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
   },
   backButton: {
+    padding: 8,
+  },
+  menuButton: {
     padding: 8,
   },
   title: {

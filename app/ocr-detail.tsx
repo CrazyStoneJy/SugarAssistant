@@ -1,8 +1,7 @@
 import CustomTransition from '@/components/CustomTransition';
-import { ThemedText } from '@/components/ThemedText';
+import Header from '@/components/Header';
 import { ThemedView } from '@/components/ThemedView';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -13,7 +12,6 @@ import {
     StatusBar,
     StyleSheet,
     Text,
-    TouchableOpacity,
     View
 } from 'react-native';
 
@@ -135,13 +133,10 @@ export default function OcrDetailScreen() {
         />
         <ThemedView style={styles.container}>
           {/* 顶部导航栏 */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#007AFF" />
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>OCR数据详情</ThemedText>
-            <View style={styles.placeholder} />
-          </View>
+          <Header
+            title="OCR数据详情"
+            showBackButton={true}
+          />
 
           {/* 内容区域 */}
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

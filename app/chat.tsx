@@ -1,10 +1,9 @@
 import ChatMessage from '@/components/ChatMessage';
-
+import PageContainer from '@/components/PageContainer';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import WeChatInput from '@/components/WeChatInput';
 import { generateSimpleAIResponse } from '@/utils/aiResponse';
-import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { addMessageToCurrentSession, createNewChatSession, getCurrentChatSession } from '@/utils/chatStorage';
 import { recognizeTextWithTencentOcr } from '@/utils/tencentOcrApi';
 
@@ -13,15 +12,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface Message {
@@ -35,6 +33,9 @@ interface Message {
     timestamp: Date;
   };
 }
+
+// 获取屏幕宽度
+const { width: screenWidth } = Dimensions.get('window');
 
 // 全局计数器，确保ID唯一性
 let messageIdCounter = 0;
@@ -90,7 +91,6 @@ export default function ChatScreen() {
   const [isAPIAvailable, setIsAPIAvailable] = useState(true);
   const [apiSource, setApiSource] = useState<'env' | 'manual' | 'none'>('none');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-
   const flatListRef = useRef<FlatList>(null);
 
   // 使用 useFocusEffect 监听页面焦点变化
@@ -546,6 +546,8 @@ export default function ChatScreen() {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
+
+
   const renderMessage = ({ item, index }: { item: Message, index: number }) => (
     <ChatMessage
       index={index}
@@ -564,59 +566,57 @@ export default function ChatScreen() {
 
   if (isLoadingHistory) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="transparent" 
-          translucent={Platform.OS === 'android'}
-        />
-        <ThemedView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <ThemedText style={styles.loadingText}>加载聊天记录...</ThemedText>
-          </View>
-        </ThemedView>
-      </SafeAreaView>
+      <PageContainer title={getTitleName()} addHeaderSpacing={false}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <ThemedText style={styles.loadingText}>加载聊天记录...</ThemedText>
+        </View>
+      </PageContainer>
     );
   }
 
   // 添加错误处理
   if (!messages || messages.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="transparent" 
-          translucent={Platform.OS === 'android'}
-        />
-        <ThemedView style={styles.container}>
-          <View style={styles.errorContainer}>
-            <Ionicons name="chatbubbles-outline" size={64} color="#999" />
-            <ThemedText style={styles.errorText}>欢迎使用SugarAssistant</ThemedText>
-            <ThemedText style={styles.errorSubtext}>
-              开始新的对话来创建第一个会话
-            </ThemedText>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => {
-                initializeChat();
-              }}
-            >
-              <ThemedText style={styles.retryButtonText}>重新加载</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </ThemedView>
-      </SafeAreaView>
+      <PageContainer title={getTitleName()} addHeaderSpacing={false}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="chatbubbles-outline" size={64} color="#999" />
+          <ThemedText style={styles.errorText}>欢迎使用SugarAssistant</ThemedText>
+          <ThemedText style={styles.errorSubtext}>
+            开始新的对话来创建第一个会话
+          </ThemedText>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              initializeChat();
+            }}
+          >
+            <ThemedText style={styles.retryButtonText}>重新加载</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </PageContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="transparent" 
-        translucent={Platform.OS === 'android'}
-      />
+    <PageContainer
+      title={getTitleName()}
+      showMenuButton={true}
+      addHeaderSpacing={false}
+      rightComponent={
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity onPress={() => router.push('/foods')} style={styles.headerButton}>
+            <Ionicons name="restaurant-outline" size={20} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/blood-sugar-record' as any)} style={styles.headerButton}>
+            <Ionicons name="fitness-outline" size={20} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/diabetes-education' as any)} style={styles.headerButton}>
+            <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+      }
+    >
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -624,36 +624,6 @@ export default function ChatScreen() {
         enabled={true}
       >
         <ThemedView style={styles.container}>
-          {/* 顶部状态栏 */}
-          <View style={styles.statusBar}>
-            <ThemedText style={styles.statusText}>
-              {getTitleName()}
-            </ThemedText>
-            <View style={styles.statusButtons}>
-              <TouchableOpacity onPress={() => router.push('/foods')} style={styles.foodsButton}>
-                <Ionicons name="restaurant-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/ocr-data')} style={styles.ocrDataButton}>
-                <Ionicons name="document-text-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/diabetes-education' as any)} style={styles.educationButton}>
-                <Ionicons name="medical-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/blood-sugar-record' as any)} style={styles.bloodSugarButton}>
-                <Ionicons name="fitness-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/sessions')} style={styles.sessionsButton}>
-                <Ionicons name="list-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/version')} style={styles.versionButton}>
-                <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
-              </TouchableOpacity>
-              {/* <TouchableOpacity onPress={() => router.push('/transition-demo')} style={styles.demoButton}>
-                <Ionicons name="play-outline" size={20} color="#007AFF" />
-              </TouchableOpacity> */}
-            </View>
-          </View>
-
           {/* 聊天内容区域 */}
           <View style={styles.chatContainer}>
             <FlatList
@@ -696,15 +666,11 @@ export default function ChatScreen() {
           </View>
         </ThemedView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </PageContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#eeeeee',
-  },
   keyboardAvoidingView: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -712,51 +678,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    // backgroundColor: 'red',
   },
-  statusBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#F7F7F7',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-    paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
-  },
-  statusText: {
-    fontSize: 18,
-    color: '#666',
-    fontWeight: '700',
-  },
-  statusButtons: {
+  headerRightButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  scrollButton: {
+  headerButton: {
     padding: 8,
-  },
-  foodsButton: {
-    padding: 8,
-  },
-  ocrDataButton: {
-    padding: 8,
-  },
-  educationButton: {
-    padding: 8,
-  },
-  bloodSugarButton: {
-    padding: 8,
-  },
-  sessionsButton: {
-    padding: 8,
-  },
-  versionButton: {
-    padding: 8,
-  },
-  demoButton: {
-    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
   },
   chatContainer: {
     flex: 1,

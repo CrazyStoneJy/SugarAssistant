@@ -1,3 +1,4 @@
+import Header from '@/components/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getStatusBarHeight } from '@/utils/androidSafeArea';
@@ -7,18 +8,23 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
+    Dimensions,
     FlatList,
     Platform,
     SafeAreaView,
     StatusBar,
     StyleSheet,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function SessionsScreen() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
 
   useEffect(() => {
     loadSessions();
@@ -98,6 +104,8 @@ export default function SessionsScreen() {
     );
   };
 
+
+
   const formatDate = (date: Date) => {
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
@@ -148,23 +156,24 @@ export default function SessionsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="transparent" 
-        translucent={Platform.OS === 'android'}
-      />
-      <ThemedView style={styles.container}>
-        {/* 顶部标题栏 */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.title}>聊天会话</ThemedText>
-          <TouchableOpacity onPress={handleClearAllSessions} style={styles.clearAllButton}>
-            <ThemedText style={styles.clearAllButtonText}>清除全部</ThemedText>
-          </TouchableOpacity>
-        </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor="transparent" 
+          translucent={Platform.OS === 'android'}
+        />
+        <ThemedView style={styles.container}>
+          {/* 顶部导航栏 */}
+          <Header
+            title="聊天会话"
+            showBackButton={true}
+            rightComponent={
+              <TouchableOpacity onPress={handleClearAllSessions} style={styles.clearAllButton}>
+                <ThemedText style={styles.clearAllButtonText}>清除全部</ThemedText>
+              </TouchableOpacity>
+            }
+          />
 
         {sessions.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -189,8 +198,11 @@ export default function SessionsScreen() {
             showsVerticalScrollIndicator={false}
           />
         )}
+
+
       </ThemedView>
     </SafeAreaView>
+  </GestureHandlerRootView>
   );
 }
 
@@ -211,6 +223,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: 8,
+    marginRight: 8,
   },
   title: {
     fontSize: 18,

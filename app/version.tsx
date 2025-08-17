@@ -1,3 +1,4 @@
+import Header from '@/components/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getBaiduSpeechConfig, isBaiduSpeechConfigured } from '@/config/env';
@@ -5,19 +6,20 @@ import { getStatusBarHeight } from '@/utils/androidSafeArea';
 import { diagnoseBaiduSpeechIssues } from '@/utils/baiduSpeechApi';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
-import { router } from 'expo-router';
 import * as Updates from 'expo-updates';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    TouchableOpacity,
+    View
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface VersionInfo {
   appVersion: string;
@@ -30,6 +32,8 @@ interface VersionInfo {
   isUpdateAvailable: boolean;
   lastUpdateCheck: string | null;
 }
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function VersionScreen() {
   const [versionInfo, setVersionInfo] = useState<VersionInfo>({
@@ -45,6 +49,7 @@ export default function VersionScreen() {
   });
   const [diagnosis, setDiagnosis] = useState<string[]>([]);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+
 
   useEffect(() => {
     loadVersionInfo();
@@ -167,22 +172,22 @@ export default function VersionScreen() {
   const config = getBaiduSpeechConfig();
   const isConfigured = isBaiduSpeechConfigured();
 
+
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="transparent" 
-        translucent={Platform.OS === 'android'}
-      />
-      <ThemedView style={styles.container}>
-        {/* 顶部导航 */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <ThemedText style={styles.title}>版本信息</ThemedText>
-          <View style={styles.placeholder} />
-        </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor="transparent" 
+          translucent={Platform.OS === 'android'}
+        />
+        <ThemedView style={styles.container}>
+          {/* 顶部导航栏 */}
+          <Header
+            title="版本信息"
+            showBackButton={true}
+          />
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* 应用信息卡片 */}
@@ -317,8 +322,11 @@ export default function VersionScreen() {
             </View>
           )}
         </ScrollView>
+
+
       </ThemedView>
     </SafeAreaView>
+  </GestureHandlerRootView>
   );
 }
 
@@ -342,6 +350,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? getStatusBarHeight() : 0,
   },
   backButton: {
+    padding: 8,
+  },
+  menuButton: {
     padding: 8,
   },
   title: {

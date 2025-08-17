@@ -1,3 +1,4 @@
+import { FAST_ANIMATION } from '@/constants/AnimationConfig';
 import { checkAudioQuality, getAudioQualitySuggestions, isSuitableForSpeechRecognition, preprocessAudio } from '@/utils/audioQualityChecker';
 import { diagnoseBaiduSpeechIssues } from '@/utils/baiduSpeechApi';
 import { checkSpeechRecognitionPermission, convertSpeechToText, diagnoseSpeechRecognition, getSpeechRecognitionConfigInfo, getSpeechRecognitionStatus } from '@/utils/speechToText';
@@ -81,12 +82,12 @@ export default function VoiceInput({ onVoiceResult, disabled = false }: VoiceInp
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.2,
-            duration: 1000,
+            ...FAST_ANIMATION.PULSE,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 1000,
+            ...FAST_ANIMATION.PULSE,
             useNativeDriver: true,
           }),
         ])
